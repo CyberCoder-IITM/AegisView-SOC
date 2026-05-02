@@ -178,19 +178,32 @@ export function SOCAgentPanel() {
         {/* TOP RIGHT: Attribution */}
         <div className="flex flex-col p-3" style={{ background: "#001400" }}>
           <div className="text-[9px] uppercase tracking-widest mb-2" style={{ color: "#00ff8860" }}>Attribution</div>
-          <div className="text-lg font-bold mb-1" style={{ color: "#ff3333" }}>{displayCycle.attribution}</div>
+
+          {/* Patch 3: "Resembles X tactics" framing — not "IS X" */}
+          <div className="text-sm font-bold mb-0.5 leading-tight" style={{ color: "#ff3333" }}>
+            {displayCycle.attribution === "Unknown Opportunistic"
+              ? "Unknown Opportunistic"
+              : `Resembles ${displayCycle.attribution} tactics`}
+          </div>
           <div className="text-[10px] mb-3" style={{ color: "#888" }}>{actorProfile}</div>
-          <div className="text-[10px] mb-1" style={{ color: "#666" }}>Confidence</div>
+
+          <div className="text-[10px] mb-1" style={{ color: "#666" }}>Behavioral similarity</div>
           <div className="w-full h-2 rounded-full mb-1" style={{ background: "#0a2a0a" }}>
             <div
               className="h-full rounded-full transition-all duration-1000"
               style={{ width: `${displayCycle.attribution_confidence}%`, background: `linear-gradient(90deg, #00ff88, #ff3333)` }}
             />
           </div>
+          {/* Patch 3: "behavioral similarity" not "confidence" */}
           <div className="text-[10px] font-bold mb-2" style={{ color: "#ff6b35" }}>
-            {displayCycle.attribution_confidence}% confidence
+            {displayCycle.attribution_confidence}% behavioral similarity
           </div>
-          <div className="text-[10px] italic" style={{ color: "#555" }}>{displayCycle.attribution_reasoning}</div>
+          <div className="text-[10px] italic mb-2" style={{ color: "#555" }}>{displayCycle.attribution_reasoning}</div>
+
+          {/* Patch 3: Accuracy disclaimer */}
+          <div className="text-[8px] italic leading-snug" style={{ color: "#3a3a3a" }}>
+            Attribution based on TTP pattern matching only. Confidence reflects behavioral similarity, not confirmed intelligence.
+          </div>
         </div>
 
         {/* BOTTOM LEFT: Predicted Next Move */}

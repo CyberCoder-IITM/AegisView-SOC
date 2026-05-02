@@ -104,19 +104,38 @@ async function runCycle(): Promise<void> {
 
     const ai = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: "", baseUrl } });
 
-    const prompt = `You are an elite SOC analyst AI (NSA/Google Project Zero caliber). Analyze this live network data snapshot and respond ONLY with a valid JSON object — no markdown fences, no explanation, just JSON.
+    // Patch 2: All 4 reasoning steps grounded to observed data only
+    const prompt = `You are an elite SOC analyst AI. Analyze this live network data snapshot and respond ONLY with a valid JSON object — no markdown fences, no explanation, just JSON.
 
 Network state:
 ${JSON.stringify(context, null, 2)}
 
+STRICT GROUNDING RULES — YOU MUST FOLLOW ALL OF THESE:
+
+STEP 1 — PATTERN RECOGNITION (threat_pattern field):
+Base your analysis ONLY on the packet fields and anomaly data provided in the JSON above. Do not invent traffic patterns not present in the data. If the data is insufficient to identify a clear pattern, say "Insufficient data for confident pattern identification" and explain what additional signals would confirm it.
+
+STEP 2 — ATTACK ATTRIBUTION (attribution + attribution_confidence + attribution_reasoning fields):
+Based ONLY on the TTPs (ports, protocols, packet patterns, flags, frequency) observed in the provided JSON data, which threat actor group does this MOST resemble?
+You MUST use hedged language: "consistent with", "resembles", "may indicate". Never state attribution as confirmed fact.
+If the observed TTPs are too generic to attribute (e.g. simple port scan with no other indicators), set attribution to "Unknown Opportunistic" and attribution_confidence to a value under 25.
+Keep attribution_reasoning to one sentence maximum. No fabrication.
+
+STEP 3 — PREDICTIVE NEXT STEP (predicted_next_action field):
+Base your prediction ONLY on the kill chain stage currently activated and the attack pattern in the data. If kill chain stage is INACTIVE across all stages, respond with: "No clear attack progression detected — monitoring advised."
+Use hedged language: "likely", "may attempt", "consistent with next stage being". Never state as certain.
+
+STEP 4 — AUTONOMOUS DECISION (autonomous_recommendation + recommendation_type fields):
+Generate ONE recommendation based strictly on observed ports and protocols in the data. The firewall rule or SIEM query must reference only the actual src_ip values, dst_port values, and protocol from the JSON. Do not invent IPs or ports not present in the provided data.
+
 Respond with exactly this JSON structure:
 {
-  "threat_pattern": "one precise technical sentence describing the primary threat pattern",
+  "threat_pattern": "one precise technical sentence based only on observed packet data",
   "attribution": "one of: APT28 | Lazarus Group | Carbanak | FIN7 | REvil | Unknown Opportunistic",
   "attribution_confidence": <integer 0-100>,
-  "attribution_reasoning": "one sentence of TTP-based reasoning",
-  "predicted_next_action": "specific next attacker step: port, protocol, and technique name",
-  "autonomous_recommendation": "exact actionable response — iptables rule, Splunk SPL query, or isolation command",
+  "attribution_reasoning": "one hedged sentence using 'resembles'/'consistent with'/'may indicate' — never stated as fact",
+  "predicted_next_action": "hedged prediction based on kill chain stage — use 'likely'/'may attempt'",
+  "autonomous_recommendation": "exact rule/query referencing only actual IPs and ports from the JSON data",
   "recommendation_type": "FIREWALL | SIEM | ISOLATE | MONITOR",
   "severity": "INFO | LOW | MED | HIGH | CRITICAL"
 }`;

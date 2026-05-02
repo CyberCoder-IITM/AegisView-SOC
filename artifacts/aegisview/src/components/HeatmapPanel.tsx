@@ -73,7 +73,7 @@ export function HeatmapPanel() {
             {/* Port labels (Y axis) */}
             {data.port_labels.map((port, ri) => (
               <text
-                key={port}
+                key={`port-row-${ri}`}
                 x={LABEL_W - 4}
                 y={LABEL_H + ri * (CELL_H + GAP) + CELL_H / 2 + 4}
                 textAnchor="end"

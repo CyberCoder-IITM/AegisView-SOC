@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 
+interface DarkwebCorrelation {
+  threat_category: string;
+  feeds_matched: string[];
+  is_c2_server: boolean;
+  is_malware_host: boolean;
+  is_compromised: boolean;
+  intel_source: string;
+}
+
 interface NarrativeEntry {
   id: string;
   narrative: string;
@@ -8,6 +17,10 @@ interface NarrativeEntry {
   anomaly_id: string;
   displayedText: string;
   isTyping: boolean;
+  // Patch 3: provenance fields returned by enriched API
+  darkweb_correlation?: DarkwebCorrelation;
+  is_tor?: boolean;
+  verified_context?: string;
 }
 
 function severityColor(s: string) {
@@ -23,6 +36,67 @@ function TypewriterText({ text, isTyping }: { text: string; isTyping: boolean })
       {text}
       {isTyping && <span className="animate-blink-cursor ml-0.5" style={{ color: "#00ff88" }}>█</span>}
     </span>
+  );
+}
+
+// Patch 3: Data provenance badge row
+function ProvenanceBadges({ entry }: { entry: NarrativeEntry }) {
+  const dc = entry.darkweb_correlation;
+  const isVerified = dc && dc.threat_category !== "CLEAN";
+  const isTor = entry.is_tor === true;
+
+  return (
+    <div className="mt-2 space-y-1.5">
+      {/* Badge row */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {isVerified ? (
+          <span
+            title={`Matched in: ${dc.feeds_matched.join(", ")}`}
+            className="text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide cursor-help"
+            style={{ background: "#00ff8820", color: "#00ff88", border: "1px solid #00ff8840" }}
+          >
+            ✓ FEED VERIFIED
+          </span>
+        ) : (
+          <span
+            title="No matches found in Emerging Threats, Feodo Tracker, or URLhaus feeds"
+            className="text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide cursor-help"
+            style={{ background: "#ffd70015", color: "#ffd700", border: "1px solid #ffd70030" }}
+          >
+            ⚠ UNVERIFIED IP
+          </span>
+        )}
+
+        {isTor && (
+          <span
+            title="Confirmed Tor exit node via TorProject.org bulk exit list"
+            className="text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wide cursor-help"
+            style={{ background: "#ff003315", color: "#ff6666", border: "1px solid #ff003340" }}
+          >
+            ✓ TOR CONFIRMED
+          </span>
+        )}
+
+        <span
+          title="AI analysis based on packet patterns only. Not a confirmed threat intelligence match."
+          className="text-[8px] px-1.5 py-0.5 rounded uppercase tracking-wide cursor-help"
+          style={{ background: "#2a2a2a", color: "#666", border: "1px solid #333" }}
+        >
+          ~ AI INFERENCE
+        </span>
+
+        {isVerified && dc && (
+          <span className="text-[8px]" style={{ color: "#444" }}>
+            via {dc.intel_source}
+          </span>
+        )}
+      </div>
+
+      {/* Disclaimer */}
+      <div className="text-[9px] italic" style={{ color: "#444" }}>
+        Narrative generated from observed packet data. Attribution is probabilistic, not confirmed.
+      </div>
+    </div>
   );
 }
 
@@ -67,7 +141,12 @@ export function AIInsights({ latestAnomaly }: { latestAnomaly?: AnomalyLike | nu
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(anomaly),
       });
-      const data = await res.json();
+      const data = await res.json() as {
+        narrative?: string;
+        darkweb_correlation?: DarkwebCorrelation;
+        is_tor?: boolean;
+        verified_context?: string;
+      };
       const fullText: string = data.narrative || "Analysis unavailable.";
 
       // Typewriter animation
@@ -75,13 +154,26 @@ export function AIInsights({ latestAnomaly }: { latestAnomaly?: AnomalyLike | nu
       const interval = setInterval(() => {
         i++;
         setNarratives(prev => prev.map(n =>
-          n.id === id ? { ...n, narrative: fullText, displayedText: fullText.slice(0, i), isTyping: i < fullText.length } : n
+          n.id === id
+            ? {
+                ...n,
+                narrative: fullText,
+                displayedText: fullText.slice(0, i),
+                isTyping: i < fullText.length,
+                // Patch 3: attach provenance from enriched response
+                darkweb_correlation: data.darkweb_correlation,
+                is_tor: data.is_tor,
+                verified_context: data.verified_context,
+              }
+            : n
         ));
         if (i >= fullText.length) clearInterval(interval);
       }, 18);
     } catch {
       setNarratives(prev => prev.map(n =>
-        n.id === id ? { ...n, narrative: "Analysis unavailable.", displayedText: "Analysis unavailable.", isTyping: false } : n
+        n.id === id
+          ? { ...n, narrative: "Analysis unavailable.", displayedText: "Analysis unavailable.", isTyping: false }
+          : n
       ));
     } finally {
       setLoading(false);
@@ -146,6 +238,8 @@ export function AIInsights({ latestAnomaly }: { latestAnomaly?: AnomalyLike | nu
               >
                 <TypewriterText text={n.displayedText} isTyping={n.isTyping} />
               </div>
+              {/* Patch 3: Data provenance badges */}
+              <ProvenanceBadges entry={n} />
             </div>
           ))
         )}

@@ -1,0 +1,212 @@
+SYSTEM ROLE: You are a Senior Cybersecurity Engineer focused on 
+AI accuracy and forensic integrity. AegisView Phases 1, 2, and 3 
+are complete. This is a targeted accuracy patch — do not rebuild 
+anything. Only modify these specific things. Every change must be 
+surgical and precise.
+
+═══════════════════════════════════════════════════════════════════
+PATCH 1 — GROUND THE AI NARRATOR TO REAL DATA ONLY
+═══════════════════════════════════════════════════════════════════
+
+In backend/analysis/ai_narrator.py:
+
+Replace the existing system prompt string entirely with this:
+
+  "You are an elite SOC analyst. You will be given a network 
+   anomaly JSON object. Your job is to write EXACTLY 3 sentences.
+
+   STRICT RULES YOU MUST NEVER VIOLATE:
+   
+   1. NEVER say an IP is 'known malicious', 'blacklisted', or 
+      'known threat actor' UNLESS the JSON contains a field 
+      darkweb_correlation.threat_category that is NOT 'CLEAN'.
+      If that field is absent or CLEAN, say 'unverified external 
+      IP of unknown reputation' instead. Never fabricate this.
+   
+   2. NEVER attribute to a specific APT group, nation-state, or 
+      threat actor UNLESS the JSON contains explicit attribution 
+      data. If absent, say 'unknown threat actor' only.
+   
+   3. NEVER invent specific details not present in the JSON.
+      No fabricated malware names, no invented campaign names,
+      no made-up CVE numbers.
+   
+   4. You MAY say an attack 'resembles' or 'is consistent with' 
+      a known technique if the packet pattern genuinely matches.
+      Use hedged language: 'consistent with', 'resembles', 
+      'pattern matches', 'may indicate'. Never state as fact.
+   
+   5. Base sentence 1 on: actual packet fields in the JSON only.
+   
+   6. Base sentence 2 on: the anomaly reason, severity, ports, 
+      and any darkweb_correlation or threat_intel fields present.
+      If those fields are absent or CLEAN, say so explicitly.
+   
+   7. Base sentence 3 on: a specific, technically accurate 
+      firewall rule or SIEM sigma detection for this exact 
+      port/protocol combination. This you CAN generate 
+      from technical knowledge — it's a recommendation not a fact.
+   
+   FORMAT: Plain text. 3 sentences. No markdown. No bullet points.
+   No preamble. Start directly with sentence 1."
+
+═══════════════════════════════════════════════════════════════════
+PATCH 2 — GROUND THE SOC AGENT TO REAL DATA ONLY
+═══════════════════════════════════════════════════════════════════
+
+In backend/analysis/soc_agent.py:
+
+Update all 4 reasoning step prompts with these replacements:
+
+Step 1 — Pattern Recognition:
+  Add to prompt:
+  "Base your analysis ONLY on the packet fields and anomaly 
+   data provided in the JSON. Do not invent traffic patterns 
+   not present in the data. If the data is insufficient to 
+   identify a clear pattern, say 'Insufficient data for 
+   confident pattern identification' and explain what 
+   additional signals would confirm it."
+
+Step 2 — Attack Attribution:
+  Replace current prompt with:
+  "Based ONLY on the TTPs (ports, protocols, packet patterns, 
+   flags, frequency) observed in the provided JSON data, which 
+   threat actor group does this MOST resemble?
+   
+   You MUST use hedged language: 'consistent with', 'resembles',
+   'may indicate'. Never state attribution as confirmed fact.
+   
+   If the observed TTPs are too generic to attribute 
+   (e.g. simple port scan with no other indicators), 
+   respond with: 'Generic opportunistic activity — 
+   insufficient TTPs for attribution.'
+   
+   One sentence maximum. No fabrication."
+
+Step 3 — Predictive Next Step:
+  Add to prompt:
+  "Base your prediction ONLY on the kill chain stage currently 
+   activated and the attack pattern in the data. If kill chain 
+   stage is INACTIVE across all stages, respond with: 
+   'No clear attack progression detected — monitoring advised.'
+   Use hedged language: 'likely', 'may attempt', 'consistent 
+   with next stage being'. Never state as certain."
+
+Step 4 — Autonomous Decision:
+  Add to prompt:
+  "Generate ONE recommendation based strictly on observed 
+   ports and protocols in the data. The firewall rule or 
+   SIEM query must reference only the actual src_ip, dst_port, 
+   and protocol from the JSON. Do not invent IPs or ports 
+   not present in the provided data."
+
+═══════════════════════════════════════════════════════════════════
+PATCH 3 — ADD CONFIDENCE INDICATORS TO UI
+═══════════════════════════════════════════════════════════════════
+
+In frontend/src/components/AIInsights.jsx:
+
+For each narrative entry add a data provenance row below the text:
+
+  Show these badges based on what fields were present in the 
+  anomaly JSON that generated this narrative:
+
+  "✓ FEED VERIFIED" — green badge, shown if 
+    darkweb_correlation.threat_category != "CLEAN"
+  
+  "⚠ UNVERIFIED IP" — yellow badge, shown if 
+    darkweb_correlation is absent or CLEAN
+  
+  "✓ TOR CONFIRMED" — red badge, shown if 
+    threat_intel.is_tor === true
+  
+  "~ AI INFERENCE" — grey badge, always shown
+    with tooltip: "AI analysis based on packet patterns only. 
+    Not a confirmed threat intelligence match."
+
+  Small text below badges:
+  "Narrative generated from observed packet data. 
+   Attribution is probabilistic, not confirmed."
+
+In frontend/src/components/SOCAgentPanel.jsx:
+
+Below the attribution section add:
+  Small italic text in #666 color:
+  "Attribution based on TTP pattern matching only. 
+   Confidence reflects behavioral similarity, not 
+   confirmed intelligence."
+  
+  Change attribution display format from:
+    "APT28 — 73% confidence"
+  To:
+    "Resembles APT28 tactics — 73% behavioral similarity"
+  
+  This one word change ("resembles") makes it legally and 
+  technically accurate while still being impressive.
+
+═══════════════════════════════════════════════════════════════════
+PATCH 4 — REAL IP REPUTATION CHECK BEFORE AI CALL
+═══════════════════════════════════════════════════════════════════
+
+In backend/analysis/ai_narrator.py:
+
+Before calling Gemini, enrich the anomaly dict with verified 
+reputation data:
+
+  async def enrich_before_narration(anomaly_dict: dict) -> dict:
+    src_ip = anomaly_dict.get("src_ip", "")
+    
+    # Check darkweb correlator (already built in Phase 3)
+    from geo.darkweb_correlator import correlate_ip
+    correlation = correlate_ip(src_ip)
+    anomaly_dict["darkweb_correlation"] = correlation.dict()
+    
+    # Check threat intel enrichment
+    from geo.threat_intel import enrich_ip
+    intel = enrich_ip(src_ip, "")
+    anomaly_dict["threat_intel"] = intel.dict()
+    
+    # Add a verified_context summary for Gemini to use:
+    if correlation.threat_category != "CLEAN":
+      anomaly_dict["verified_context"] = (
+        f"VERIFIED: This IP appears in {correlation.intel_source} "
+        f"as category {correlation.threat_category}. "
+        f"Feeds matched: {', '.join(correlation.feeds_matched)}."
+      )
+    elif intel.is_tor:
+      anomaly_dict["verified_context"] = (
+        "VERIFIED: This IP is a confirmed Tor exit node "
+        "per TorProject.org bulk exit list."
+      )
+    else:
+      anomaly_dict["verified_context"] = (
+        "UNVERIFIED: This IP has no matches in current "
+        "threat intelligence feeds. Treat as unknown."
+      )
+    
+    return anomaly_dict
+
+  Call enrich_before_narration() before generate_narrative()
+  Pass enriched dict to Gemini so it has verified context.
+
+═══════════════════════════════════════════════════════════════════
+QUALITY GATES
+═══════════════════════════════════════════════════════════════════
+
+1. The word "known malicious" must never appear in any AI 
+   output unless verified_context starts with "VERIFIED:"
+2. All attribution statements must contain hedging language
+3. UI badges must accurately reflect actual data fields present
+4. enrich_before_narration must handle missing fields gracefully
+5. No change to any existing routes or data pipelines
+6. No UI layout changes — only add badges within existing panels
+
+═══════════════════════════════════════════════════════════════════
+EXECUTE. Files to modify in order:
+1. backend/analysis/ai_narrator.py
+2. backend/analysis/soc_agent.py
+3. frontend/src/components/AIInsights.jsx
+4. frontend/src/components/SOCAgentPanel.jsx
+
+Confirm each with ✓. Only these 4 files. Nothing else.
+═══════════════════════════════════════════════════════════════════
