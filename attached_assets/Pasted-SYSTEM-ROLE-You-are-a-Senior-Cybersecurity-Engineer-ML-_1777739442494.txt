@@ -1,0 +1,449 @@
+SYSTEM ROLE: You are a Senior Cybersecurity Engineer, ML Engineer, and 
+Full-Stack Architect. AegisView is already built and running. You are now 
+adding Phase 2 upgrades that push this into unreachable hackathon territory.
+Do not rebuild anything that exists. Only ADD the following features.
+Generate every file completely. No placeholders. No TODOs. Working code only.
+After each file confirm: "✓ [filename] complete."
+
+═══════════════════════════════════════════════════════════════════════════
+FEATURE 1 — AI THREAT NARRATIVE ENGINE (Gemini Flash)
+═══════════════════════════════════════════════════════════════════════════
+
+Add to requirements.txt:
+  google-generativeai>=0.5.0
+  scikit-learn>=1.4.0
+
+Create backend/analysis/ai_narrator.py:
+  - Import google.generativeai, configure with os.environ["GEMINI_API_KEY"]
+  - Model: gemini-1.5-flash
+  - Function: async generate_narrative(anomaly_dict: dict) -> str
+  - System prompt hardcoded inside:
+    "You are an elite SOC analyst at a Tier-1 MSSP. Given a network anomaly 
+     JSON, write EXACTLY 3 sentences: (1) What happened technically, 
+     (2) Which known attack pattern or APT group this resembles and why, 
+     (3) The exact firewall rule or SIEM sigma rule to mitigate it. 
+     Be brutally specific. Use real IP reputation context. Return plain 
+     text only, no markdown, no bullet points."
+  - Send anomaly_dict as JSON string in user message
+  - Return the generated text string
+  - Wrap in try/except, return "Analysis unavailable." on failure
+
+Add to backend/api/routes_threats.py:
+  - New route: POST /api/ai/analyze
+  - Body: AnomalyResult schema
+  - Call generate_narrative(anomaly.dict())
+  - Return: { "narrative": str, "timestamp": ISO8601, "anomaly_id": str }
+  - Add anomaly_id field (uuid4) to AnomalyResult schema in schemas.py
+
+Create frontend/src/components/AIInsights.jsx:
+  - Dark panel, full width below CompliancePanel
+  - Header: "🧠 AI Threat Intelligence" with a pulsing green dot
+  - Maintains a list of last 5 narratives in state
+  - Each narrative renders in a terminal-style box:
+    - Monospace font, #00ff88 text on #0a1a0a background
+    - Typewriter animation: reveal text character by character 
+      at 30ms per char using useEffect + setInterval
+    - Header above each: timestamp + severity badge
+  - Auto-triggers: whenever a CRITICAL or HIGH anomaly enters 
+    the Zustand store, POST to /api/ai/analyze automatically
+  - Loading state: show blinking cursor "█" while waiting
+  - Max 5 narratives shown, oldest drops off the bottom
+  - Smooth slide-in animation for new entries using CSS keyframes
+
+═══════════════════════════════════════════════════════════════════════════
+FEATURE 2 — MITRE ATT&CK KILL CHAIN VISUALIZER
+═══════════════════════════════════════════════════════════════════════════
+
+Create backend/analysis/mitre_mapper.py:
+  - MITRE_RULES dict mapping packet patterns to ATT&CK stages:
+    {
+      "reconnaissance": {
+        "id": "TA0043",
+        "triggers": ["port_scan_score > 15", "unique_dst_ports > 10 in 30s"],
+        "color": "#ffd700"
+      },
+      "initial_access": {
+        "id": "TA0001", 
+        "triggers": ["dst_port=3389 from non-RFC1918", "dst_port=22 brute"],
+        "color": "#ff6b35"
+      },
+      "lateral_movement": {
+        "id": "TA0008",
+        "triggers": ["dst_port=445 internal", "dst_port=135 internal"],
+        "color": "#ff4500"
+      },
+      "command_and_control": {
+        "id": "TA0011",
+        "triggers": ["high_volume dst_port=443 single_src", "beacon_pattern"],
+        "color": "#ff2200"
+      },
+      "exfiltration": {
+        "id": "TA0010",
+        "triggers": ["outbound_bytes > 50MB in 60s", "dst_port=53 high_freq"],
+        "color": "#ff0033"
+      }
+    }
+  - Function: compute_kill_chain(packets: list, anomalies: list) -> list
+    Returns: [{stage, id, status: "INACTIVE"|"SUSPECTED"|"CONFIRMED", 
+               evidence: str, confidence: float}]
+  - beacon_pattern detection: same dst_ip contacted every 30-120s 
+    consistently (C2 beaconing signature)
+  - Routes: GET /api/mitre/killchain → current kill chain state
+
+Create frontend/src/components/MitreKillChain.jsx:
+  - Full-width panel spanning entire dashboard width
+  - 5 hexagonal SVG nodes connected by animated flowing lines
+  - Node states:
+    INACTIVE: dark grey #1a1a2e, no glow
+    SUSPECTED: yellow #ffd700, soft pulsing glow (CSS animation)
+    CONFIRMED: red #ff0033, intense pulsing glow + shake animation
+  - Between each node: animated dashed line, direction left→right
+    When stage is CONFIRMED: line becomes solid red with 
+    flowing particle animation (CSS stroke-dashoffset animation)
+  - Each node on hover: tooltip showing ATT&CK ID, evidence string, 
+    confidence percentage
+  - Stage labels below each hex: 
+    RECON | INITIAL ACCESS | LATERAL MOVE | C2 | EXFILTRATION
+  - Polls /api/mitre/killchain every 3 seconds
+  - When a new stage activates: flash the entire panel border red 
+    for 1 second with a CSS animation
+
+═══════════════════════════════════════════════════════════════════════════
+FEATURE 3 — PACKET VELOCITY HEATMAP
+═══════════════════════════════════════════════════════════════════════════
+
+Create backend/api/routes_analytics.py:
+  - GET /api/analytics/heatmap
+  - Analyzes packet deque, computes:
+    time_buckets: last 30 buckets of 10 seconds each
+    top_ports: 20 most frequently targeted destination ports
+    matrix: 30x20 grid where cell[t][p] = packet count
+  - Returns: {
+      time_labels: [ISO8601 strings],
+      port_labels: [int],
+      matrix: [[int]], 
+      max_count: int
+    }
+
+Create frontend/src/components/HeatmapPanel.jsx:
+  - Build using pure SVG (no extra library needed)
+  - 30 columns (time) × 20 rows (ports) grid of rectangles
+  - Each rect: 
+    width=22px, height=18px, 1px gap
+    fill computed by: count/max_count mapped to color scale:
+      0: #0a0e1a (invisible)
+      0.01-0.2: #003366 (low)
+      0.2-0.5: #0066cc (medium)  
+      0.5-0.8: #ff6b35 (high)
+      0.8-1.0: #ff0033 (critical)
+  - On rect hover: tooltip showing "Port {p} | {time} | {count} packets"
+  - Y-axis labels: port numbers left-aligned
+  - X-axis labels: time strings bottom, rotated 45°
+  - Title: "📊 Packet Velocity Heatmap — Port × Time"
+  - Updates every 5 seconds via polling /api/analytics/heatmap
+  - On update: cells animate from old color to new color 
+    using CSS transition: background 0.5s ease
+
+═══════════════════════════════════════════════════════════════════════════
+FEATURE 4 — ATTACK SIMULATION MODE
+═══════════════════════════════════════════════════════════════════════════
+
+Create backend/capture/simulator.py:
+  - Class AttackSimulator with these methods, each injecting fake 
+    PacketRecord dicts directly into the sniffer's deque:
+
+  syn_flood(duration_seconds=15, intensity=50):
+    Generate {intensity} packets/second
+    src_ip: random IPs from 185.x.x.x, 45.x.x.x ranges (known bad)
+    dst_ip: "10.0.0.1"
+    dst_port: 80, src_port: random
+    flags: "SYN", protocol: "TCP"
+    length: random 40-60 bytes
+    Run for duration_seconds using asyncio
+
+  port_scan(target_ip="10.0.0.1", port_range=range(1,1025)):
+    One packet per port, rapid succession (50ms apart)
+    src_ip: "185.220.101.47" (real Tor exit node IP)
+    flags: "SYN", vary dst_port through port_range
+    TTL: 64, length: 44
+
+  telnet_barrage():
+    50 packets, dst_port=23, src_ip random foreign IPs
+    flags alternating SYN/ACK
+    Triggers PCI-DSS-6.5 immediately
+
+  rdp_external_brute():
+    200 packets, dst_port=3389
+    src_ip: "91.108.4.1" (Telegram DC IP for realism)
+    flags: "SYN", rapid pace 20/second
+    Triggers NIST-AC-17 immediately
+
+  data_exfil_simulation():
+    Large packets (8000-9000 bytes) to single external dst_ip
+    dst_port=443, high frequency (30/second for 20 seconds)
+    Triggers exfiltration stage in MITRE kill chain
+
+Add routes: 
+  POST /api/simulate/syn_flood
+  POST /api/simulate/port_scan  
+  POST /api/simulate/telnet
+  POST /api/simulate/rdp_brute
+  POST /api/simulate/exfil
+  POST /api/simulate/stop → clears injected packets, resets state
+  Each accepts optional JSON body: { "intensity": int, "duration": int }
+
+Create frontend/src/components/SimulatorPanel.jsx:
+  - Position: fixed bottom-right corner, collapsed by default
+  - Toggle button: red glowing "⚡ ATTACK SIM" button
+  - When expanded: dark red panel (#1a0000 background) slides up
+  - 5 attack buttons, each with icon + label + description:
+    💀 SYN Flood — "Volumetric DDoS simulation"
+    🔍 Port Scan — "Nmap-style reconnaissance"  
+    📟 Telnet Barrage — "Insecure protocol violation"
+    🖥️ RDP Brute — "Remote access attack"
+    📤 Data Exfil — "C2 exfiltration pattern"
+  - Each button: on click → POST to simulate route → 
+    button turns red, shows "RUNNING..." with spinner
+  - Stop All button: red border, calls /api/simulate/stop
+  - Warning text at bottom: 
+    "⚠ SIMULATION MODE — No real packets transmitted"
+  - When any simulation is active: 
+    App.jsx header shows blinking red "🔴 SIMULATION ACTIVE" 
+    badge next to the LIVE indicator
+
+═══════════════════════════════════════════════════════════════════════════
+FEATURE 5 — BEHAVIORAL BASELINE ENGINE
+═══════════════════════════════════════════════════════════════════════════
+
+Create backend/analysis/baseline.py:
+  - BaselineEngine class with two modes: LEARNING and ACTIVE
+  - LEARNING mode (first 300 seconds after startup):
+    Collect stats every second:
+      packets_per_second[], 
+      bytes_per_second[],
+      protocol_ratios: {TCP: [], UDP: [], ICMP: []},
+      top_ports: Counter,
+      unique_src_ips: set
+    After 300s: compute baseline profile:
+      mean_pps, std_pps, mean_bps, std_bps
+      normal_protocol_ratios: {TCP: float, UDP: float, ICMP: float}
+      Save to /tmp/aegisview_baseline.json
+  - ACTIVE mode:
+    Every 10s: compare current window to baseline
+    Compute deviation_score per metric:
+      (current - baseline_mean) / baseline_std
+    Return top 3 deviating metrics with scores
+  - GET /api/baseline/status returns:
+    {
+      mode: "LEARNING" | "ACTIVE",
+      progress: 0-100 (percentage of 300s learning complete),
+      learning_time_remaining: int (seconds),
+      profile: { mean_pps, std_pps, mean_bps } | null,
+      deviations: [{metric, expected, actual, delta, severity}] | []
+    }
+
+Create frontend/src/components/BaselinePanel.jsx:
+  - During LEARNING mode:
+    Full-width pulsing panel: "🧠 Building Behavioral Baseline"
+    Animated progress bar (cyan, glowing)
+    Shows live stats being collected:
+      "Packets/sec: 47 | Protocols: TCP 62% UDP 31%"
+    Countdown: "Active detection in: 4:32"
+  - During ACTIVE mode:
+    Compact panel showing 3 deviation bars
+    Each bar: metric name | expected range | current value | delta
+    Color: green if within 1σ, yellow if 1-2σ, red if >2σ
+    "✓ Normal behavior" if all deviations < 1σ
+  - Polls /api/baseline/status every 5 seconds
+
+═══════════════════════════════════════════════════════════════════════════
+FEATURE 6 — PCAP EXPORT + FORENSIC REPORT
+═══════════════════════════════════════════════════════════════════════════
+
+Add to backend/api/routes_packets.py:
+  POST /api/capture/export:
+    - Take last 500 packets from deque
+    - Reconstruct as Scapy packet objects
+    - Use wrpcap("/tmp/aegisview_{timestamp}.pcap", packets)
+    - Return as FileResponse with content-type application/vnd.tcpdump.pcap
+    - Filename: aegisview_capture_{YYYYMMDD_HHMMSS}.pcap
+
+  GET /api/report/forensic:
+    - Generate a complete incident report as markdown string
+    - Sections:
+      # AegisView Forensic Incident Report
+      **Generated:** {timestamp}
+      **Analysis Window:** {duration}
+      
+      ## Executive Summary
+      Total packets: {n} | Anomalies: {n} | Threat Level: {score}/100
+      
+      ## Threat Timeline
+      Chronological list of all anomalies with timestamps
+      
+      ## Compliance Violations  
+      Each triggered rule with full evidence
+      
+      ## Top Threat IPs
+      Table: IP | Country | Packets | Ports Targeted | Classification
+      
+      ## MITRE ATT&CK Coverage
+      Activated stages with evidence
+      
+      ## Recommended Firewall Rules
+      iptables commands for each threat IP
+      
+      ## Risk Rating: FAIL/WARN/PASS
+    - Return as FileResponse, content-type text/markdown
+    - Filename: aegisview_report_{timestamp}.md
+
+Add to frontend/src/components/CompliancePanel.jsx (modify existing):
+  - Replace existing "Download Report" button with two buttons:
+    "📥 Export PCAP" → POST /api/capture/export → download file
+    "📋 Forensic Report" → GET /api/report/forensic → download .md
+  - Both buttons show spinner during download
+  - Success toast notification: "✓ Downloaded successfully"
+
+═══════════════════════════════════════════════════════════════════════════
+FEATURE 7 — TOR / THREAT INTEL ENRICHMENT
+═══════════════════════════════════════════════════════════════════════════
+
+Create backend/geo/threat_intel.py:
+  - On module import (startup), fetch in background thread:
+    https://check.torproject.org/torbulkexitlist
+    Parse into set: TOR_EXIT_NODES
+    If fetch fails: use hardcoded set of 20 known Tor exits
+  - BULLETPROOF_ASNS set (hardcoded):
+    {"AS9009", "AS206092", "AS208323", "AS49877", "AS60068",
+     "AS174", "AS3356", "AS20473", "AS14061", "AS16276"}
+  - Function: enrich_ip(ip: str, asn: str) -> ThreatIntel:
+    Returns: ThreatIntel(
+      is_tor: bool,
+      is_bulletproof: bool, 
+      is_rfc1918: bool,
+      threat_tags: list[str],  # ["TOR_EXIT", "BULLETPROOF_HOSTING", "SCANNER"]
+      reputation_score: int    # 0-100, higher = more malicious
+    )
+  - reputation_score formula:
+    +50 if is_tor
+    +40 if is_bulletproof  
+    +10 per known bad tag
+    clamped to 100
+  - Integrate into parser.py: call enrich_ip() for every 
+    non-RFC1918 source IP, add threat_intel field to PacketRecord
+
+Update frontend/src/components/PacketFeed.jsx:
+  - Add "INTEL" column after FLAGS column
+  - Render badges based on threat_intel field:
+    ☠ "TOR" — red badge, #ff0033 background
+    ⚠ "BPH" — orange badge, #ff6b35 background  
+    🔍 "SCAN" — yellow badge, #ffd700 background + black text
+  - Rows with reputation_score > 50: 
+    entire row background: rgba(255, 0, 51, 0.15)
+    left border: 3px solid #ff0033
+  - Reputation score shown as small number next to badges
+  - Sort: high reputation_score rows float to top automatically
+
+═══════════════════════════════════════════════════════════════════════════
+LAYOUT INTEGRATION — UPDATE App.jsx
+═══════════════════════════════════════════════════════════════════════════
+
+Update App.jsx grid layout to include all new components:
+
+  Row 0 (new): MitreKillChain — full width, 60px height
+  Row 1: ThreatLevelGauge (col 1-3) | GlobeMap (col 4-12)
+  Row 2: ProtocolBreakdown (col 1-4) | AnomalyChart (col 5-12)
+  Row 3: HeatmapPanel — full width
+  Row 4: BaselinePanel — full width  
+  Row 5: PacketFeed (col 1-8) | CompliancePanel (col 9-12)
+  Row 6: AIInsights — full width
+
+SimulatorPanel: fixed position, bottom-right, z-index 9999
+
+Header bar additions:
+  - Left: "🛡️ AegisView" | "v2.0" version badge
+  - Center: baseline mode indicator (LEARNING/ACTIVE pill)
+  - Right: simulation active badge (if running) | connection pill
+
+Global CSS additions in index.css:
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 5px currentColor; }
+    50% { box-shadow: 0 0 20px currentColor, 0 0 40px currentColor; }
+  }
+  @keyframes typewriter { from { width: 0; } to { width: 100%; } }
+  @keyframes slide-in-up {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes particle-flow {
+    0% { stroke-dashoffset: 100; }
+    100% { stroke-dashoffset: 0; }
+  }
+
+═══════════════════════════════════════════════════════════════════════════
+ZUSTAND STORE UPDATES — packetStore.js
+═══════════════════════════════════════════════════════════════════════════
+
+Add to existing store:
+  State additions:
+    killChain: []           (MITRE stages)
+    baselineStatus: {}      (learning/active state)
+    narratives: []          (AI insights, max 5)
+    simulationActive: false
+    simulationMode: null    (attack type string)
+    heatmapData: {}
+
+  Action additions:
+    setKillChain(stages)
+    setBaselineStatus(status)
+    addNarrative(narrative)  → prepend, slice to 5
+    setSimulationActive(bool, mode)
+    setHeatmapData(data)
+
+  Auto-trigger logic in addPacket action:
+    After adding packet, check:
+    if packet.anomaly.severity === "CRITICAL" || "HIGH":
+      dispatch fetchNarrative(packet.anomaly)
+      (fetchNarrative POSTs to /api/ai/analyze, adds result 
+       to narratives via addNarrative)
+
+═══════════════════════════════════════════════════════════════════════════
+QUALITY GATES — ENFORCE ALL
+═══════════════════════════════════════════════════════════════════════════
+
+1. GEMINI_API_KEY must be read from os.environ — never hardcoded
+2. All new routes registered in main.py router
+3. All new Pydantic schemas added to schemas.py
+4. Simulator injects into the SAME deque used by the live sniffer
+5. Baseline engine runs in a background asyncio task, not blocking
+6. TOR list fetch has 10s timeout + silent fallback
+7. PCAP export handles empty deque gracefully (return 400 with message)
+8. All new components added to App.jsx imports
+9. HeatmapPanel SVG must be scrollable horizontally on small screens
+10. AIInsights auto-scroll to newest narrative
+
+═══════════════════════════════════════════════════════════════════════════
+EXECUTE NOW. Generate files in this order:
+1. schemas.py (add new models)
+2. analysis/ai_narrator.py
+3. analysis/mitre_mapper.py
+4. analysis/baseline.py
+5. capture/simulator.py
+6. geo/threat_intel.py
+7. api/routes_analytics.py (heatmap route)
+8. api/routes_threats.py (add /ai/analyze, /mitre/killchain)
+9. api/routes_packets.py (add export + forensic routes)
+10. api/simulate routes (add to main.py)
+11. main.py (register all new routers)
+12. requirements.txt (updated)
+13. src/components/AIInsights.jsx
+14. src/components/MitreKillChain.jsx
+15. src/components/HeatmapPanel.jsx
+16. src/components/SimulatorPanel.jsx
+17. src/components/BaselinePanel.jsx
+18. src/store/packetStore.js (updated)
+19. src/App.jsx (updated layout)
+20. src/index.css (animations)
+
+Confirm each file with ✓. Do not stop until all 20 are complete.
+═══════════════════════════════════════════════════════════════════════════

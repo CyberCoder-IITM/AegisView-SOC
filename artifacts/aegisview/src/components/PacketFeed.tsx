@@ -1,6 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { useGetPackets } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
+import { enrichIp } from "@/lib/threatIntel";
 
 export function PacketFeed() {
   const { data: packets } = useGetPackets({
@@ -14,17 +15,24 @@ export function PacketFeed() {
     }
   }, [packets?.length]);
 
-  const rows = packets || [];
+  const rows = [...(packets || [])].sort((a, b) => {
+    const scoreFn = (p: typeof a) => {
+      const intel = a.is_external ? enrichIp(p.src_ip) : null;
+      return intel?.reputation_score || 0;
+    };
+    return scoreFn(b) - scoreFn(a);
+  });
 
   return (
     <div className="w-full h-full flex flex-col">
-      <div className="flex items-center text-[10px] uppercase font-bold text-muted-foreground px-4 py-2 bg-card border-b border-border tracking-wider shrink-0">
-        <div className="w-24 shrink-0">Time</div>
-        <div className="w-40 shrink-0">Source</div>
-        <div className="w-40 shrink-0">Destination</div>
-        <div className="w-14 shrink-0">Proto</div>
-        <div className="w-14 shrink-0 text-right">Size</div>
-        <div className="w-18 shrink-0 text-center">Flags</div>
+      <div className="flex items-center text-[10px] uppercase font-bold text-muted-foreground px-3 py-2 bg-card border-b border-border tracking-wider shrink-0">
+        <div className="w-20 shrink-0">Time</div>
+        <div className="w-36 shrink-0">Source</div>
+        <div className="w-36 shrink-0">Destination</div>
+        <div className="w-12 shrink-0">Proto</div>
+        <div className="w-12 shrink-0 text-right">Size</div>
+        <div className="w-16 shrink-0 text-center">Flags</div>
+        <div className="w-24 shrink-0 text-center">Intel</div>
         <div className="flex-1 text-right">Severity</div>
       </div>
       <div
@@ -38,15 +46,22 @@ export function PacketFeed() {
           </div>
         ) : (
           rows.map((p, index) => {
+            const intel = p.is_external ? enrichIp(p.src_ip) : null;
+            const isHighRep = (intel?.reputation_score || 0) > 50;
             const isCritical = p.is_anomaly && p.severity === "CRITICAL";
             const isHigh = p.is_anomaly && p.severity === "HIGH";
+
             return (
               <div
                 key={p.id}
-                className="flex items-center text-xs font-mono px-4 border-b border-[rgba(255,255,255,0.02)]"
+                className="flex items-center text-xs font-mono px-3 border-b"
                 style={{
-                  height: 36,
-                  backgroundColor: isCritical
+                  height: 34,
+                  borderBottomColor: isHighRep ? "rgba(255,0,51,0.2)" : "rgba(255,255,255,0.02)",
+                  borderLeftWidth: isHighRep ? 3 : 0,
+                  borderLeftColor: "#ff0033",
+                  borderLeftStyle: "solid",
+                  backgroundColor: isCritical || isHighRep
                     ? "rgba(255,0,51,0.12)"
                     : isHigh
                     ? "rgba(255,107,53,0.06)"
@@ -55,23 +70,39 @@ export function PacketFeed() {
                     : "transparent",
                 }}
               >
-                <div className="w-24 shrink-0 truncate opacity-60 text-[10px]">
+                <div className="w-20 shrink-0 truncate opacity-60 text-[10px]">
                   {p.timestamp.split("T")[1]?.substring(0, 8) || "--"}
                 </div>
-                <div className="w-40 shrink-0 truncate text-primary text-[10px]">
+                <div className="w-36 shrink-0 truncate text-primary text-[10px]">
                   {p.src_ip}:{p.src_port}
                 </div>
-                <div className="w-40 shrink-0 truncate text-[10px]">
+                <div className="w-36 shrink-0 truncate text-[10px]">
                   {p.dst_ip}:{p.dst_port}
                 </div>
-                <div className="w-14 shrink-0 font-bold text-[10px]" style={{ color: p.protocol === "TCP" ? "#00d4ff" : p.protocol === "UDP" ? "#7b2fff" : p.protocol === "ICMP" ? "#ff6b35" : "#888" }}>
+                <div className="w-12 shrink-0 font-bold text-[10px]" style={{ color: p.protocol === "TCP" ? "#00d4ff" : p.protocol === "UDP" ? "#7b2fff" : p.protocol === "ICMP" ? "#ff6b35" : "#888" }}>
                   {p.protocol}
                 </div>
-                <div className="w-14 shrink-0 text-right opacity-60 text-[10px]">
+                <div className="w-12 shrink-0 text-right opacity-60 text-[10px]">
                   {p.length}B
                 </div>
-                <div className="w-18 shrink-0 text-center opacity-70 text-[10px]">
+                <div className="w-16 shrink-0 text-center opacity-70 text-[10px]">
                   {p.flags || "-"}
+                </div>
+                <div className="w-24 shrink-0 flex items-center gap-0.5 justify-center">
+                  {intel?.is_tor && (
+                    <span className="text-[8px] font-bold px-1 py-0.5 rounded-sm" style={{ background: "#ff0033", color: "#fff" }}>☠TOR</span>
+                  )}
+                  {intel?.is_bulletproof && (
+                    <span className="text-[8px] font-bold px-1 py-0.5 rounded-sm" style={{ background: "#ff6b35", color: "#fff" }}>BPH</span>
+                  )}
+                  {intel?.threat_tags.includes("SCANNER") && (
+                    <span className="text-[8px] font-bold px-1 py-0.5 rounded-sm" style={{ background: "#ffd700", color: "#000" }}>🔍</span>
+                  )}
+                  {intel && intel.reputation_score > 0 && (
+                    <span className="text-[8px] opacity-60" style={{ color: intel.reputation_score > 50 ? "#ff0033" : "#ffd700" }}>
+                      {intel.reputation_score}
+                    </span>
+                  )}
                 </div>
                 <div className="flex-1 flex justify-end">
                   {p.severity === "CRITICAL" ? (

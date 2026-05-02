@@ -533,3 +533,65 @@ export function getProtocolBreakdown(): ProtocolBreakdown {
 export function getAnomalyTimeline(): AnomalyDataPoint[] {
   return [...anomalyTimeline].slice(-60);
 }
+
+export function injectPacket(p: PacketRecord): void {
+  packets.push(p);
+  recentLengths.push(p.length);
+  recentTimestamps.push(Date.now());
+  if (packets.length > MAX_PACKETS) packets.shift();
+  if (recentLengths.length > 200) recentLengths.shift();
+  if (recentTimestamps.length > 500) recentTimestamps.shift();
+}
+
+export function getAllPackets(): PacketRecord[] {
+  return packets;
+}
+
+export function getHeatmapData(): { time_labels: string[]; port_labels: number[]; matrix: number[][]; max_count: number } {
+  const BUCKETS = 30;
+  const BUCKET_MS = 10000;
+  const TOP_PORTS = 20;
+  const now = Date.now();
+
+  // Build time buckets
+  const bucketCounts = new Map<number, Map<number, number>>();
+  const portFreq = new Map<number, number>();
+
+  for (const p of packets) {
+    const age = now - new Date(p.timestamp).getTime();
+    if (age > BUCKETS * BUCKET_MS) continue;
+    const bucketIdx = Math.floor(age / BUCKET_MS);
+    const revIdx = BUCKETS - 1 - bucketIdx;
+
+    if (!bucketCounts.has(revIdx)) bucketCounts.set(revIdx, new Map());
+    const portMap = bucketCounts.get(revIdx)!;
+    portMap.set(p.dst_port, (portMap.get(p.dst_port) || 0) + 1);
+    portFreq.set(p.dst_port, (portFreq.get(p.dst_port) || 0) + 1);
+  }
+
+  // Top ports by frequency
+  const port_labels = [...portFreq.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, TOP_PORTS)
+    .map(([port]) => port);
+
+  const time_labels: string[] = [];
+  const matrix: number[][] = [];
+  let max_count = 1;
+
+  for (let t = 0; t < BUCKETS; t++) {
+    const bucketTime = new Date(now - (BUCKETS - t) * BUCKET_MS);
+    time_labels.push(
+      `${bucketTime.getHours().toString().padStart(2, "0")}:${bucketTime.getMinutes().toString().padStart(2, "0")}:${bucketTime.getSeconds().toString().padStart(2, "0")}`
+    );
+    const portMap = bucketCounts.get(t) || new Map();
+    const row = port_labels.map(port => {
+      const c = portMap.get(port) || 0;
+      if (c > max_count) max_count = c;
+      return c;
+    });
+    matrix.push(row);
+  }
+
+  return { time_labels, port_labels, matrix, max_count };
+}

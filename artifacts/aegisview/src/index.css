@@ -114,3 +114,49 @@
     background-size: 32px 32px;
   }
 }
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 5px currentColor; }
+  50% { box-shadow: 0 0 20px currentColor, 0 0 40px currentColor; }
+}
+
+@keyframes slide-in-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes particle-flow {
+  0% { stroke-dashoffset: 100; }
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes panel-flash-red {
+  0%, 100% { border-color: rgba(255,0,51,0.3); }
+  50% { border-color: rgba(255,0,51,1); box-shadow: 0 0 20px rgba(255,0,51,0.4); }
+}
+
+@keyframes hex-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-2px); }
+  40% { transform: translateX(2px); }
+  60% { transform: translateX(-1px); }
+  80% { transform: translateX(1px); }
+}
+
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes sim-slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+.animate-slide-in-up { animation: slide-in-up 0.4s ease-out; }
+.animate-particle-flow { animation: particle-flow 1.5s linear infinite; }
+.animate-panel-flash { animation: panel-flash-red 1s ease-in-out; }
+.animate-hex-shake { animation: hex-shake 0.5s ease-in-out; }
+.animate-blink-cursor { animation: blink-cursor 1s step-end infinite; }
+.animate-sim-slide-up { animation: sim-slide-up 0.3s ease-out; }
