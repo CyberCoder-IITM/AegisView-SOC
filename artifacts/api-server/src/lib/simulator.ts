@@ -112,6 +112,8 @@ const COMMON_PORTS = [80, 443, 8080, 53, 25, 587, 143, 993, 110, 995, 3000, 5432
 const PROTOCOLS: Array<"TCP" | "UDP" | "ICMP" | "OTHER"> = ["TCP", "TCP", "TCP", "UDP", "UDP", "ICMP", "OTHER"];
 const TCP_FLAGS = ["SYN", "ACK", "SYN-ACK", "FIN", "RST", "PSH-ACK", "SYN-ACK", "ACK", "ACK"];
 
+const START_TIME = Date.now();
+
 const MAX_PACKETS = 500;
 const packets: PacketRecord[] = [];
 const anomalyTimeline: AnomalyDataPoint[] = [];
@@ -343,6 +345,16 @@ function getReason(p: PacketRecord): string {
   if (p.flags === "RST") return "TCP RST flood indicator";
   if (p.flags === "SYN") return "Possible SYN scan or SYN flood";
   return "Anomalous traffic pattern detected";
+}
+
+export function getLiveStats(): { pps: number; uptime_seconds: number; threat_count: number; risk_score: number } {
+  const now = Date.now();
+  const fiveSecAgo = now - 5000;
+  const recentCount = recentTimestamps.filter(t => t > fiveSecAgo).length;
+  const pps = parseFloat((recentCount / 5).toFixed(2));
+  const uptime_seconds = Math.floor((now - START_TIME) / 1000);
+  const { score } = getThreatLevel();
+  return { pps, uptime_seconds, threat_count: anomalyCount, risk_score: score };
 }
 
 export function getThreatLevel(): ThreatLevel {

@@ -1,0 +1,59 @@
+Do not add any stop/start capture controls. AegisView is a 
+LIVE system and must always be capturing. Never pause the sniffer.
+
+Instead, update the stats display in the dashboard header/summary 
+area with these exact changes:
+
+REMOVE:
+  - The raw cumulative packet counter entirely
+
+REPLACE WITH these 4 live stat cards in the top summary bar:
+
+Card 1 — "PKT/s"
+  Value: rolling packets-per-second average over last 5 seconds
+  Backend: GET /api/stats/live returns { pps: float }
+  Color: cyan #00d4ff
+  Subtitle: "Live Throughput"
+
+Card 2 — "THREATS"
+  Value: cumulative anomaly count since session start
+  Color: changes dynamically:
+    0: green #00ff88
+    1-5: yellow #ffd700
+    6+: red #ff0033 with pulse glow animation
+  Subtitle: "Anomalies Detected"
+
+Card 3 — "UPTIME"
+  Value: session timer counting up HH:MM:SS from when 
+  the backend started, fetched from:
+  GET /api/stats/live → add { uptime_seconds: int }
+  Display as: "01:23:47"
+  Color: white
+  Subtitle: "Session Duration"
+
+Card 4 — "RISK SCORE"
+  Value: the existing threat level score 0-100
+  Color: same dynamic color scale as ThreatLevelGauge
+  Subtitle: "Current Risk"
+  Clicking this card smoothly scrolls to ThreatLevelGauge
+
+Backend:
+  Add GET /api/stats/live to routes_packets.py:
+  Returns {
+    pps: float,              (packets in last 5s / 5)
+    uptime_seconds: int,     (time since backend start)
+    threat_count: int,       (total anomalies detected)
+    risk_score: int          (current 0-100 threat score)
+  }
+  Track backend start time with: 
+    START_TIME = datetime.utcnow() at module level in main.py
+
+Frontend:
+  Replace existing packet count display with 4 stat cards
+  Each card: dark background #0d1117, rounded corners, 
+  subtle border in the card's color at 30% opacity
+  Value: large bold number, 2rem font
+  Subtitle: small caps, #666, 0.7rem
+  All 4 cards update every 2 seconds via polling /api/stats/live
+  Smooth number transition animation when value changes:
+    animate count up/down over 500ms using requestAnimationFrame

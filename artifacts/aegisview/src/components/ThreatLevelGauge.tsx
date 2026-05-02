@@ -39,7 +39,7 @@ export function ThreatLevelGauge() {
   const offset = circumference - (score / 100) * circumference;
 
   return (
-    <div className="flex flex-col items-center justify-center h-full p-4 relative">
+    <div id="threat-gauge" className="flex flex-col items-center justify-center h-full p-4 relative">
       <div className={`relative w-48 h-24 overflow-hidden ${isPulsing ? 'animate-pulse' : ''}`}>
         <svg viewBox="0 0 200 100" className="w-full h-full overflow-visible">
           {/* Background Arc */}
@@ -72,13 +72,7 @@ export function ThreatLevelGauge() {
         </div>
       </div>
       
-      <div className="mt-6 flex w-full justify-between px-6 text-xs text-muted-foreground">
-        <div className="flex flex-col items-center">
-          <span className="uppercase text-[10px] opacity-70">Packets</span>
-          <span className="font-mono text-foreground font-bold mt-1">
-            {(threatData?.packets_analyzed || 0).toLocaleString()}
-          </span>
-        </div>
+      <div className="mt-6 flex w-full justify-center px-6 text-xs text-muted-foreground">
         <div className="flex flex-col items-center">
           <span className="uppercase text-[10px] opacity-70">Compliance Flags</span>
           <span className="font-mono text-foreground font-bold mt-1 text-warning">

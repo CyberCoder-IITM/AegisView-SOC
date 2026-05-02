@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { getPackets, getProtocolBreakdown, getAnomalyTimeline } from "../lib/simulator.js";
+import { getPackets, getProtocolBreakdown, getAnomalyTimeline, getLiveStats } from "../lib/simulator.js";
 
 const router: IRouter = Router();
 
@@ -13,6 +13,10 @@ router.get("/stats/protocol-breakdown", (_req, res) => {
 
 router.get("/stats/anomaly-timeline", (_req, res) => {
   res.json(getAnomalyTimeline());
+});
+
+router.get("/stats/live", (_req, res) => {
+  res.json(getLiveStats());
 });
 
 export default router;

@@ -10,6 +10,7 @@ import { HeatmapPanel } from "@/components/HeatmapPanel";
 import { BaselinePanel } from "@/components/BaselinePanel";
 import { AIInsights } from "@/components/AIInsights";
 import { SimulatorPanel } from "@/components/SimulatorPanel";
+import { LiveStatsBar } from "@/components/LiveStatsBar";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const GlobeMap = React.lazy(() => import("@/components/GlobeMap"));
@@ -77,6 +78,9 @@ export default function Home() {
 
       {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
+
+        {/* Live Stats Bar */}
+        <LiveStatsBar />
 
         {/* Row 0: MITRE Kill Chain — full width */}
         <MitreKillChain />
