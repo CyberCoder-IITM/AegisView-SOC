@@ -26,6 +26,7 @@ import { SystemHealth } from "@/components/SystemHealth";
 import { QueryEngine } from "@/components/QueryEngine";
 import { Achievements } from "@/components/Achievements";
 import { TopologyMap } from "@/components/TopologyMap";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const GlobeMap = React.lazy(() => import("@/components/GlobeMap"));
 
@@ -223,13 +224,13 @@ export default function Home({ incidentId }: HomeProps) {
 
           {/* Row 0: MITRE Kill Chain — full width */}
           <div style={{ gridColumn: "1 / -1", ...CARD, height: "auto" }}>
-            <MitreKillChain />
+            <ErrorBoundary label="MITRE Kill Chain"><MitreKillChain /></ErrorBoundary>
           </div>
 
           {/* Row 1: Threat Gauge + Globe/Topology + SOC Agent */}
           <div style={ROW_GRID("2fr 5fr 3fr", 320)}>
             <div style={CARD}>
-              <ThreatLevelGauge />
+              <ErrorBoundary label="Threat Gauge"><ThreatLevelGauge /></ErrorBoundary>
             </div>
 
             {/* Globe / Topology tab panel */}
@@ -264,75 +265,77 @@ export default function Home({ incidentId }: HomeProps) {
               {/* Tab content */}
               <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
                 {mapTab === "globe" ? (
-                  <Suspense fallback={
-                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-primary)" }}>
-                      <Skeleton className="w-48 h-48 rounded-full opacity-10" />
-                    </div>
-                  }>
-                    <div className="absolute inset-0 overflow-hidden">
-                      <GlobeMap />
-                    </div>
-                  </Suspense>
+                  <ErrorBoundary label="Globe Map">
+                    <Suspense fallback={
+                      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-primary)" }}>
+                        <Skeleton className="w-48 h-48 rounded-full opacity-10" />
+                      </div>
+                    }>
+                      <div className="absolute inset-0 overflow-hidden">
+                        <GlobeMap />
+                      </div>
+                    </Suspense>
+                  </ErrorBoundary>
                 ) : (
-                  <TopologyMap />
+                  <ErrorBoundary label="Topology Map"><TopologyMap /></ErrorBoundary>
                 )}
               </div>
             </div>
 
             <div style={CARD}>
-              <SOCAgentPanel />
+              <ErrorBoundary label="SOC Agent"><SOCAgentPanel /></ErrorBoundary>
             </div>
           </div>
 
           {/* Row 2: Protocol Breakdown + Z-Score Chart + Device Radar */}
           <div style={ROW_GRID("2fr 5fr 3fr", 260)}>
             <div style={CARD}>
-              <ProtocolBreakdown />
+              <ErrorBoundary label="Protocol Breakdown"><ProtocolBreakdown /></ErrorBoundary>
             </div>
             <div style={CARD}>
-              <AnomalyChart />
+              <ErrorBoundary label="Anomaly Chart"><AnomalyChart /></ErrorBoundary>
             </div>
             <div style={CARD}>
-              <DeviceRadar />
+              <ErrorBoundary label="Device Radar"><DeviceRadar /></ErrorBoundary>
             </div>
           </div>
 
           {/* Row 3: Heatmap + Threat Intel */}
           <div style={ROW_GRID("7fr 5fr", 220)}>
             <div style={{ ...CARD, overflowX: "auto", overflowY: "hidden" }}>
-              <HeatmapPanel />
+              <ErrorBoundary label="Heatmap"><HeatmapPanel /></ErrorBoundary>
             </div>
             <div style={{ ...CARD, overflowY: "auto" }}>
-              <ThreatIntelPanel />
+              <ErrorBoundary label="Threat Intel"><ThreatIntelPanel /></ErrorBoundary>
             </div>
           </div>
 
           {/* Row 4: Baseline + Integrity Chain */}
           <div style={ROW_GRID("1fr 1fr", 160)}>
             <div style={CARD}>
-              <BaselinePanel />
+              <ErrorBoundary label="Baseline"><BaselinePanel /></ErrorBoundary>
             </div>
             <div style={CARD}>
-              <IntegrityChain />
+              <ErrorBoundary label="Integrity Chain"><IntegrityChain /></ErrorBoundary>
             </div>
           </div>
 
           {/* Row 5: Packet Feed + Compliance + Sigma Rules */}
           <div style={ROW_GRID("5fr 4fr 3fr", 340)}>
             <div style={{ ...CARD, display: "flex", flexDirection: "column" }}>
-              <PacketFeed />
+              <ErrorBoundary label="Packet Feed"><PacketFeed /></ErrorBoundary>
             </div>
             <div style={{ ...CARD, overflowY: "auto" }}>
-              <CompliancePanel />
+              <ErrorBoundary label="Compliance"><CompliancePanel /></ErrorBoundary>
             </div>
             <div style={{ ...CARD, overflowY: "auto" }}>
-              <SigmaRules />
+              <ErrorBoundary label="Sigma Rules"><SigmaRules /></ErrorBoundary>
             </div>
           </div>
 
           {/* Row 6: AI Insights */}
           <div style={{ gridColumn: "1 / -1", ...CARD, height: "auto" }}>
-            <AIInsights latestAnomaly={latestAnomaly} />
+            <ErrorBoundary label="AI Insights"><AIInsights latestAnomaly={latestAnomaly} /></ErrorBoundary>
           </div>
 
         </div>

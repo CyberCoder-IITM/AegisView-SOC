@@ -73,6 +73,6 @@ export default defineConfig({
     allowedHosts: true,
   },
   optimizeDeps: {
-    include: ["frame-ticker"],
+    include: [],
   },
 });
