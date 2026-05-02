@@ -7,7 +7,7 @@ import { computeKillChain } from "../lib/killchain.js";
 
 const router: IRouter = Router();
 
-const QUERY_SYSTEM_PROMPT = `You are AegisView's natural language query engine. You have access to real-time network data provided below. Answer the analyst's question using ONLY this data. Be specific — reference actual IPs, ports, timestamps, protocols from the data. If the answer is not in the data, say exactly: 'This information is not available in the current capture window.' Format: 2-4 sentences max. No markdown. Plain text. Never invent data not present in the context.`;
+const QUERY_SYSTEM_PROMPT = `You are AegisView's natural language query engine. Answer the analyst's question using ONLY the network data provided below. Rules: always write complete sentences — never truncate mid-sentence. Be specific: reference actual IPs, ports, protocols and counts from the data. If the answer is not in the data, say: 'This information is not available in the current capture window.' Keep answers to 2-4 complete sentences. No markdown, no bullet points. Plain text only. Never invent data not present in the context.`;
 
 router.post("/query", async (req, res) => {
   const { question } = req.body as { question: string };
@@ -79,7 +79,7 @@ router.post("/query", async (req, res) => {
         role: "user",
         parts: [{ text: `${QUERY_SYSTEM_PROMPT}\n\nNetwork Context:\n${JSON.stringify(context, null, 2)}\n\nAnalyst Question: ${question}` }],
       }],
-      config: { maxOutputTokens: 256, temperature: 0.05 },
+      config: { maxOutputTokens: 1024, temperature: 0.05 },
     });
 
     const response = await Promise.race([queryPromise, timeoutPromise]);
