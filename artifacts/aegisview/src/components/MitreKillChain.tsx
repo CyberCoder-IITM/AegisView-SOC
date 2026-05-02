@@ -9,7 +9,7 @@ interface KillChainStage {
   color: string;
 }
 
-function HexNode({ stage, active, isFlashing }: { stage: KillChainStage; active: boolean; isFlashing: boolean }) {
+function HexNode({ stage, active, isFlashing, nodeIndex, totalNodes }: { stage: KillChainStage; active: boolean; isFlashing: boolean; nodeIndex: number; totalNodes: number }) {
   const [showTooltip, setShowTooltip] = useState(false);
   const isConfirmed = stage.status === "CONFIRMED";
   const isSuspected = stage.status === "SUSPECTED";
@@ -60,8 +60,16 @@ function HexNode({ stage, active, isFlashing }: { stage: KillChainStage; active:
 
         {showTooltip && (
           <div
-            className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-50 w-64 rounded-lg p-3 text-xs font-mono shadow-xl pointer-events-none"
-            style={{ background: "var(--bg-primary)", border: "var(--card-border)" }}
+            className="absolute bottom-full mb-2 z-50 w-64 rounded-lg p-3 text-xs font-mono shadow-xl pointer-events-none"
+            style={{
+              background: "var(--bg-primary)",
+              border: "var(--card-border)",
+              ...(nodeIndex === 0
+                ? { left: 0 }
+                : nodeIndex === totalNodes - 1
+                ? { right: 0 }
+                : { left: "50%", transform: "translateX(-50%)" }),
+            }}
           >
             <div className="font-bold mb-1" style={{ color: glowColor }}>{stage.stage}</div>
             <div style={{ color: "var(--text-secondary)" }} className="mb-1">ATT&CK ID: {stage.id}</div>
@@ -167,7 +175,7 @@ export function MitreKillChain() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 0 }}>
         {stages.map((stage, i) => (
           <React.Fragment key={stage.id}>
-            <HexNode stage={stage} active={stage.status !== "INACTIVE"} isFlashing={flashing} />
+            <HexNode stage={stage} active={stage.status !== "INACTIVE"} isFlashing={flashing} nodeIndex={i} totalNodes={stages.length} />
             {i < stages.length - 1 && (
               <FlowLine fromStatus={stage.status} />
             )}
