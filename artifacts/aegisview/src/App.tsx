@@ -10,6 +10,9 @@ const queryClient = new QueryClient();
 function Router() {
   return (
     <Switch>
+      <Route path="/incident/:id">
+        {(params: Record<string, string>) => <Home incidentId={params.id} />}
+      </Route>
       <Route path="/" component={Home} />
       <Route component={NotFound} />
     </Switch>

@@ -1,0 +1,651 @@
+SYSTEM ROLE: You are a Principal Product Engineer who has shipped 
+enterprise security products at Palo Alto Networks and CrowdStrike.
+AegisView Phases 1 through 3 are complete and visually polished.
+This is the FINAL PHASE — Phase 4. The goal is to make this feel 
+like a real deployable product, not a hackathon demo. Every feature 
+here adds product credibility, judge wow factor, or real-world 
+utility. No placeholders. No TODOs. Complete working code only.
+Confirm each file with ✓.
+
+═══════════════════════════════════════════════════════════════════
+FEATURE 1 — CINEMATIC ONBOARDING EXPERIENCE
+═══════════════════════════════════════════════════════════════════
+
+This is the FIRST thing a judge sees. It must be jaw-dropping.
+
+Create frontend/src/components/Onboarding.jsx:
+
+  Triggered: only on first visit (check localStorage key 
+  "aegisview_onboarded"). If key exists, skip entirely.
+
+  Full-screen overlay: background #000000
+  
+  SEQUENCE (auto-plays, no user input needed):
+
+  Step 1 — Boot sequence (3 seconds):
+    Terminal-style text appears line by line, typewriter effect:
+    
+    "> AEGISVIEW v3.0 INITIALIZING..."
+    "> LOADING THREAT INTELLIGENCE FEEDS... OK"
+    "> SCAPY PACKET ENGINE... ONLINE"  
+    "> GEMINI AI CORTEX... CONNECTED"
+    "> FORENSIC INTEGRITY CHAIN... GENESIS BLOCK CREATED"
+    "> BEHAVIORAL BASELINE ENGINE... LEARNING"
+    "> ALL SYSTEMS NOMINAL"
+    ""
+    "> WELCOME, ANALYST."
+    
+    Font: monospace, color #00ff88, font-size 0.9rem
+    Each line appears with 300ms delay between lines
+    Cursor blinks at end of last line for 1 second
+  
+  Step 2 — Logo reveal (1.5 seconds):
+    Boot text fades out
+    "🛡️ AEGISVIEW" fades in, massive centered
+    Subtitle: "Real-Time Network Threat Detection & 
+               Compliance Auditing Platform"
+    Tagline: "Replacing $200K Splunk deployments since 2026"
+    All with subtle upward drift animation
+  
+  Step 3 — Feature highlights (4 seconds):
+    3 cards appear one by one with stagger:
+    
+    Card 1: "🧠 AI-Powered Detection"
+      "Autonomous SOC agent analyzes threats in real-time
+       using Gemini AI with MITRE ATT&CK attribution"
+    
+    Card 2: "⛓ Court-Admissible Forensics"  
+      "SHA-256 tamper-evident packet integrity chain.
+       Every capture legally defensible."
+    
+    Card 3: "📋 Automated Compliance"
+      "PCI-DSS and NIST 800-53 violation detection
+       with auto-generated Sigma SIEM rules."
+    
+    Cards: glassmorphism style:
+      background: rgba(255,255,255,0.03)
+      border: 1px solid rgba(255,255,255,0.08)
+      backdrop-filter: blur(10px)
+      border-radius: 16px
+      padding: 24px
+  
+  Step 4 — CTA (1 second):
+    Single button appears: "ENTER OPERATIONS CENTER →"
+    Glowing cyan border, hover fills with cyan
+    On click: set localStorage "aegisview_onboarded"="true"
+    Overlay fades out, dashboard fades in over 0.5s
+  
+  Also add: small "Skip Intro" text link bottom-right
+  from the very beginning for impatient users.
+  
+  Total auto-play duration: ~10 seconds
+  Do not auto-advance past Step 4 — wait for click.
+
+═══════════════════════════════════════════════════════════════════
+FEATURE 2 — SESSION REPLAY & TIMELINE SCRUBBER
+═══════════════════════════════════════════════════════════════════
+
+One of the most requested features in real SOC tools.
+"What happened 8 minutes ago?" — AegisView can now answer.
+
+Create backend/analysis/session_recorder.py:
+
+  Class SessionRecorder:
+    Records snapshots every 10 seconds:
+    
+    Snapshot(
+      timestamp: ISO8601,
+      snapshot_id: str,        (uuid)
+      threat_level: int,
+      anomaly_count: int,
+      active_compliance_flags: int,
+      kill_chain_stages: list[str],   (active stage names)
+      top_src_ips: list[str],         (top 5 by packet count)
+      packets_per_second: float,
+      baseline_mode: str,
+      agent_latest_attribution: str | null,
+      packet_sample: list[dict]        (10 representative packets)
+    )
+    
+    Store: deque(maxlen=360)  (360 × 10s = 60 minutes of history)
+    
+    Routes:
+      GET /api/replay/snapshots → list of all snapshots
+        (return only: snapshot_id, timestamp, threat_level, 
+         anomaly_count — lightweight index for scrubber)
+      GET /api/replay/snapshot/{snapshot_id} → full snapshot
+      GET /api/replay/timeline → threat_level over time array:
+        [{timestamp, threat_level, anomaly_count, 
+          had_critical: bool}]
+
+Create frontend/src/components/TimelineScrubber.jsx:
+
+  Fixed position panel at very bottom of screen:
+    position: fixed
+    bottom: 0, left: 0, right: 0
+    height: 72px
+    background: rgba(10, 14, 26, 0.95)
+    backdrop-filter: blur(20px)
+    border-top: 1px solid var(--bg-border)
+    z-index: 9000
+    padding: 0 var(--space-xl)
+    display: flex
+    align-items: center
+    gap: var(--space-lg)
+  
+  Left: "📼 SESSION REPLAY" label + LIVE/REPLAY mode pill
+  
+  Center: custom timeline scrubber:
+    Full-width horizontal track
+    Background: mini sparkline of threat_level over time
+      Rendered as SVG area chart inside the track
+      Color: threat level colors (green→yellow→red areas)
+    Draggable thumb: current position
+    Red dot markers at timestamps where had_critical=true
+    Hover over track: tooltip showing timestamp + threat level
+    
+  Right: 
+    Current time display: "LIVE" or replayed timestamp
+    "⏮ -5min" button | "▶ LIVE" button
+  
+  Replay mode behavior:
+    When user drags scrubber to a past point:
+      Fetch that snapshot from API
+      Dashboard enters REPLAY MODE:
+        Header shows "📼 REPLAYING: {timestamp}" in yellow
+        All panels show snapshot data instead of live data
+        Packet feed shows packet_sample from snapshot
+        Threat gauge shows snapshot threat_level
+        Compliance panel shows snapshot flags
+      Live data continues recording in background
+      "▶ LIVE" button returns to live mode instantly
+  
+  Add to Zustand store:
+    replayMode: false
+    replaySnapshot: null
+    replayTimestamp: null
+    Actions: enterReplay(snapshot), exitReplay()
+
+═══════════════════════════════════════════════════════════════════
+FEATURE 3 — SHAREABLE INCIDENT LINKS
+═══════════════════════════════════════════════════════════════════
+
+When a CRITICAL threat is detected, generate a shareable URL 
+that opens AegisView to that exact incident snapshot.
+
+Create backend/api/routes_incidents.py:
+
+  POST /api/incidents/create:
+    Body: { snapshot_id: str, title: str, severity: str }
+    Creates: Incident(
+      incident_id: str,    (short 8-char alphanumeric)
+      snapshot_id: str,
+      title: str,
+      severity: str,
+      created_at: ISO8601,
+      url_token: str       (same as incident_id)
+    )
+    Store in dict: INCIDENTS (in-memory)
+    Return: { incident_id, share_url: f"/incident/{incident_id}" }
+  
+  GET /api/incidents/{incident_id}:
+    Returns full incident + its snapshot data
+  
+  GET /api/incidents:
+    Returns list of all created incidents
+
+Create frontend/src/components/IncidentManager.jsx:
+
+  Slide-out drawer from right side, triggered by 
+  bell icon in header showing unread count badge
+  
+  Auto-creates incident when:
+    Agent cycle returns severity="CRITICAL"
+    Title: agent's threat_pattern string
+    
+  Incident list:
+    Each incident card:
+      Severity badge | Title | Time ago
+      "🔗 Copy Link" button → copies 
+        window.location.origin + "/incident/" + incident_id
+        to clipboard, shows "✓ Copied!" toast
+      "👁 View" button → enters replay mode for that snapshot
+    
+  Header: "🚨 INCIDENTS ({count})" with red badge if unread
+  
+  In App.jsx:
+    Handle route /incident/:id on load:
+      Fetch incident from API
+      Auto-enter replay mode with that snapshot
+      Show banner: "Viewing Incident: {title}"
+
+═══════════════════════════════════════════════════════════════════
+FEATURE 4 — SYSTEM HEALTH MONITOR
+═══════════════════════════════════════════════════════════════════
+
+The dashboard that monitors your network needs to prove it 
+itself is healthy. Self-monitoring is a mark of maturity.
+
+Create backend/api/routes_health.py:
+
+  GET /api/health/detailed:
+    Returns SystemHealth(
+      status: "HEALTHY"|"DEGRADED"|"CRITICAL",
+      timestamp: ISO8601,
+      uptime_seconds: int,
+      
+      components: [
+        {
+          name: "Packet Sniffer",
+          status: "OK"|"WARN"|"ERROR",
+          metric: str,        ("47 pkt/s" or "STOPPED")
+          last_packet_age_ms: int
+        },
+        {
+          name: "Gemini AI",
+          status: "OK"|"WARN"|"ERROR", 
+          metric: str,        ("avg 1.2s response")
+          last_call_age_s: int
+        },
+        {
+          name: "Threat Intel Feeds",
+          status: "OK"|"WARN"|"ERROR",
+          metric: str,        ("3/3 feeds active")
+          feed_count: int
+        },
+        {
+          name: "Integrity Chain",
+          status: "OK"|"ERROR",
+          metric: str,        ("1000 entries, verified")
+          chain_valid: bool
+        },
+        {
+          name: "Baseline Engine",
+          status: "OK"|"WARN",
+          metric: str,        ("ACTIVE — 23 deviations tracked")
+          mode: str
+        },
+        {
+          name: "SOC Agent",
+          status: "OK"|"WARN"|"ERROR",
+          metric: str,        ("last cycle 34s ago")
+          last_cycle_age_s: int
+        }
+      ],
+      
+      performance: {
+        avg_packet_parse_ms: float,
+        avg_anomaly_score_ms: float,
+        avg_ai_narrate_ms: float,
+        memory_mb: float,        (use psutil)
+        cpu_percent: float       (use psutil)
+      }
+    )
+  
+  Add psutil to requirements.txt
+
+Create frontend/src/components/SystemHealth.jsx:
+
+  Small collapsible panel, collapsed by default
+  Toggle: click "⚙ SYSTEM" button in header
+  Slides down from header as a dropdown panel
+
+  When expanded (position absolute below header, full width):
+    background: var(--bg-secondary)
+    border-bottom: 1px solid var(--bg-border)
+    padding: var(--space-md) var(--space-xl)
+    
+    Two columns:
+    
+    Left — Component status grid:
+      6 component rows:
+        Status dot (green/yellow/red) | Name | Metric
+        All on one line, monospace metric value
+    
+    Right — Performance meters:
+      4 horizontal mini progress bars:
+        CPU: % bar, color shifts green→red
+        Memory: MB / estimated max
+        Avg Parse: ms (green if <5ms, yellow if <20ms, red if >20ms)
+        AI Response: ms (green if <2s, yellow if <5s, red if >5s)
+    
+    Bottom: "All systems operational" in green 
+            OR "⚠ {n} components degraded" in yellow/red
+    
+  Polls /api/health/detailed every 10 seconds
+  If any component is ERROR: 
+    Header "⚙ SYSTEM" button turns red automatically
+
+═══════════════════════════════════════════════════════════════════
+FEATURE 5 — NATURAL LANGUAGE QUERY ENGINE
+═══════════════════════════════════════════════════════════════════
+
+Type a question in plain English. AegisView answers using 
+your actual live packet data. This is what Microsoft Copilot 
+for Security charges $4/user/hour for.
+
+Create backend/api/routes_query.py:
+
+  POST /api/query:
+    Body: { question: str }
+    
+    Process:
+      1. Gather current context:
+         - Last 50 packets summary
+         - Current threat level
+         - Active compliance flags
+         - Kill chain status
+         - Device profiles summary
+         - Baseline status
+         - Recent agent cycles
+      
+      2. Send to Gemini with this system prompt:
+         "You are AegisView's query engine. You have access to 
+          real-time network data provided below. Answer the 
+          analyst's question using ONLY this data. Be specific,
+          reference actual IPs, ports, timestamps from the data.
+          If the answer is not in the data, say exactly:
+          'This information is not available in the current 
+          capture window.'
+          
+          Format: 2-4 sentences max. No markdown. Plain text.
+          Never invent data not present in the context."
+         
+         Append full context JSON to prompt.
+      
+      3. Return: {
+           answer: str,
+           data_points_used: int,    (count of packets in context)
+           confidence: "HIGH"|"MED"|"LOW",
+           timestamp: ISO8601
+         }
+    
+    Example questions that must work:
+      "Which IP is sending the most traffic right now?"
+      "Are there any Telnet connections in the last 5 minutes?"
+      "What is the current compliance status?"
+      "Which device has changed behavior the most?"
+      "Is there any sign of data exfiltration?"
+
+Create frontend/src/components/QueryEngine.jsx:
+
+  Floating search bar, position fixed, 
+  top: 50%, left: 50%, transform: translate(-50%, -50%)
+  Triggered ONLY by pressing "/" key anywhere on dashboard
+  Or by clicking search icon in header
+  
+  When active: 
+    Full screen backdrop: rgba(0,0,0,0.7) blur(4px)
+    Center modal (600px wide):
+      background: var(--bg-card)
+      border: 1px solid var(--cyan)
+      border-radius: var(--radius-lg)
+      box-shadow: 0 0 60px rgba(0, 212, 255, 0.15)
+    
+    Header: "🔍 Ask AegisView Anything"
+    Subtitle: "Natural language query against live packet data"
+    
+    Input field:
+      Full width, large (font-size 1rem)
+      Placeholder: "e.g. Which IP is sending the most traffic?"
+      border: none, background transparent
+      color: white, outline: none
+      Press Enter to submit
+    
+    Suggestion chips below input (clickable):
+      "Most active IP right now"
+      "Any compliance violations?"
+      "Signs of port scanning?"
+      "Current threat summary"
+    
+    On submit: show typing indicator, then answer
+    
+    Answer display:
+      Monospace font, cyan color
+      Typewriter reveal effect
+      Below: "📊 Based on {n} packets | Confidence: {level}"
+      
+    Press Escape to close
+    Recent queries: show last 5 in dropdown on focus
+
+═══════════════════════════════════════════════════════════════════
+FEATURE 6 — ACHIEVEMENT / DETECTION MILESTONES
+═══════════════════════════════════════════════════════════════════
+
+This sounds like a game feature but it's actually brilliant 
+for a hackathon. Judges interact with the tool, they trigger 
+milestones, they feel rewarded. Pure psychology.
+
+Create frontend/src/components/Achievements.jsx:
+
+  Achievement system — track in Zustand store:
+  
+  ACHIEVEMENTS list (hardcoded):
+  
+  {
+    id: "first_blood",
+    title: "First Blood",
+    description: "First anomaly detected",
+    icon: "🎯",
+    rarity: "COMMON"
+  },
+  {
+    id: "tor_hunter", 
+    title: "Tor Hunter",
+    description: "Identified a Tor exit node",
+    icon: "🧅",
+    rarity: "UNCOMMON"
+  },
+  {
+    id: "chain_guardian",
+    title: "Chain Guardian", 
+    description: "Verified integrity chain with 1000+ entries",
+    icon: "⛓",
+    rarity: "RARE"
+  },
+  {
+    id: "threat_critical",
+    title: "Red Alert",
+    description: "Threat level reached CRITICAL",
+    icon: "🔴",
+    rarity: "UNCOMMON"
+  },
+  {
+    id: "compliance_fail",
+    title: "Auditor's Nightmare",
+    description: "All 4 compliance rules triggered simultaneously",
+    icon: "📋",
+    rarity: "RARE"
+  },
+  {
+    id: "apt_attribution",
+    title: "Ghost in the Machine",
+    description: "SOC Agent attributed activity to APT group",
+    icon: "👻",
+    rarity: "EPIC"
+  },
+  {
+    id: "sigma_master",
+    title: "Sigma Master",
+    description: "25 Sigma rules auto-generated",
+    icon: "Σ",
+    rarity: "RARE"
+  },
+  {
+    id: "full_killchain",
+    title: "Kill Chain Complete",
+    description: "All 5 MITRE stages activated",
+    icon: "💀",
+    rarity: "LEGENDARY"
+  }
+  
+  Trigger logic in packetStore.js:
+    checkAchievements() called after every state update
+    Each achievement checked against current state
+    Once unlocked: stored in localStorage, never shown again
+  
+  Toast notification on unlock:
+    Slides in from top-right, stays 4 seconds
+    Rarity colors:
+      COMMON: grey border
+      UNCOMMON: green border  
+      RARE: blue border
+      EPIC: purple border + glow
+      LEGENDARY: gold border + intense glow + particle burst
+    
+    Format:
+      "🏆 ACHIEVEMENT UNLOCKED"
+      Icon + Title in large text
+      Description in small text
+      Rarity badge
+    
+  Achievement gallery: 
+    Click trophy icon in header
+    Grid of all achievements
+    Unlocked: full color
+    Locked: dark grey silhouette with "???" title
+
+═══════════════════════════════════════════════════════════════════
+FEATURE 7 — LIVE NETWORK TOPOLOGY MAP
+═══════════════════════════════════════════════════════════════════
+
+Visualize which devices are talking to which — as a live 
+force-directed graph. This is what Cisco SecureX shows.
+
+Create frontend/src/components/TopologyMap.jsx:
+
+  Uses D3 force simulation (d3 already in dependencies)
+  
+  Data: builds graph from packet feed in Zustand store:
+    Nodes: unique IPs seen (src + dst)
+    Edges: communication pairs with packet count as weight
+    
+  Node visual rules:
+    Size: proportional to total packet count (min 8px, max 24px)
+    Color:
+      RFC1918 IP: var(--cyan) — "internal"
+      External clean IP: var(--grey)
+      External with threat intel hit: var(--orange)
+      TOR exit node: var(--red) with glow
+      Current highest anomaly src: pulsing var(--red)
+    
+    Icons inside nodes (SVG text):
+      Guessed device type from fingerprinter:
+        💻 Workstation | 🖥 Server | 📡 Router | 📱 IoT
+    
+  Edge visual rules:
+    Width: proportional to packet count between pair
+    Color:
+      Normal: rgba(255,255,255,0.1)
+      Has anomaly: var(--orange) 
+      CRITICAL anomaly: var(--red) with animated dash
+    
+  Interactions:
+    Drag nodes to rearrange
+    Click node: shows DeviceProfile sidebar for that IP
+    Hover edge: shows packet count + protocol breakdown
+    Double-click node: filter PacketFeed to that IP only
+    
+  Controls bar above graph:
+    "Show Internal Only" toggle
+    "Show External Only" toggle  
+    "Reset Layout" button
+    "Filter by Protocol" dropdown: ALL/TCP/UDP/ICMP
+    
+  Updates: rebuilds graph every 5 seconds from store data
+  Animation: nodes smoothly move to new positions (D3 transition)
+  
+  Placement in App.jsx:
+    New tab system in main dashboard area
+    Add tab bar to GlobeMap panel:
+      Tab 1: "🌍 GLOBAL THREAT MAP" (existing globe)
+      Tab 2: "🕸 NETWORK TOPOLOGY" (this component)
+    Both tabs same panel, same dimensions
+
+═══════════════════════════════════════════════════════════════════
+LAYOUT UPDATES — App.jsx
+═══════════════════════════════════════════════════════════════════
+
+Add to header (left to right order):
+  Logo | Version | [space] | Baseline pill | [space] | 
+  "/ QUERY" shortcut hint | "🔔 INCIDENTS" bell with badge |
+  "⚙ SYSTEM" health button | Sim active badge | "⚔ WAR ROOM" |
+  "? HELP" | Time | LIVE pill
+
+Add TimelineScrubber: fixed bottom, always visible
+  Add padding-bottom: 72px to main dashboard to compensate
+
+Add Onboarding: renders before everything else if not onboarded
+
+Add QueryEngine: fixed overlay, "/" key trigger
+
+Add Achievements toast: fixed top-right toast container
+
+Add IncidentManager: slide-out drawer from right
+
+All new components imported and rendered in App.jsx.
+
+═══════════════════════════════════════════════════════════════════
+BACKEND — main.py ADDITIONS
+═══════════════════════════════════════════════════════════════════
+
+Register new routers:
+  from api.routes_health import router as health_router
+  from api.routes_query import router as query_router  
+  from api.routes_incidents import router as incidents_router
+  from api.routes_replay import router as replay_router
+
+Add to startup:
+  asyncio.create_task(session_recorder.record_continuous())
+
+Add to requirements.txt:
+  psutil>=5.9.0
+
+Add new Pydantic models to schemas.py:
+  SystemHealth, ComponentStatus, PerformanceMetrics,
+  QueryRequest, QueryResponse, Incident, Snapshot,
+  SnapshotIndex, TimelinePoint, Achievement
+
+═══════════════════════════════════════════════════════════════════
+QUALITY GATES
+═══════════════════════════════════════════════════════════════════
+
+1. Onboarding localStorage check must be instant — 
+   no flash of dashboard before onboarding check
+2. TimelineScrubber must never cover SimulatorPanel button
+3. Replay mode must be obvious — header banner always visible
+4. Query engine "/" shortcut must not trigger in input fields
+5. Topology map D3 simulation must not freeze UI —
+   run simulation on requestAnimationFrame only
+6. Achievements must persist across page refresh via localStorage
+7. Incident share links must work by URL alone —
+   no login, no session required
+8. System health panel must not show ERROR for 
+   expected conditions (baseline in LEARNING is WARN not ERROR)
+9. Session recorder background task must be lowest priority —
+   never delay packet processing
+10. All new Gemini calls must have 10s timeout + fallback
+
+═══════════════════════════════════════════════════════════════════
+EXECUTE. File generation order:
+1.  schemas.py (all new models)
+2.  backend/analysis/session_recorder.py
+3.  backend/api/routes_health.py
+4.  backend/api/routes_query.py
+5.  backend/api/routes_incidents.py
+6.  backend/api/routes_replay.py
+7.  backend/main.py (updated)
+8.  backend/requirements.txt (updated)
+9.  src/components/Onboarding.jsx
+10. src/components/TimelineScrubber.jsx
+11. src/components/IncidentManager.jsx
+12. src/components/SystemHealth.jsx
+13. src/components/QueryEngine.jsx
+14. src/components/Achievements.jsx
+15. src/components/TopologyMap.jsx
+16. src/store/packetStore.js (updated)
+17. src/App.jsx (final complete)
+
+Confirm each file with ✓. 
+Do not stop until all 17 are complete.
+═══════════════════════════════════════════════════════════════════

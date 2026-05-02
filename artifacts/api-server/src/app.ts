@@ -10,6 +10,7 @@ import { startAgent } from "./lib/socAgent.js";
 import { startForecaster } from "./lib/forecaster.js";
 import { startSigmaGenerator } from "./lib/sigmaGenerator.js";
 import { startCorrelator } from "./lib/darkwebCorrelator.js";
+import { startRecorder } from "./lib/sessionRecorder.js";
 
 const app: Express = express();
 
@@ -47,5 +48,6 @@ startAgent();
 startForecaster();
 startSigmaGenerator();
 startCorrelator();
+startRecorder();
 
 export default app;

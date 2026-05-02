@@ -15,6 +15,10 @@ import chainRouter from "./chain.js";
 import forecastRouter from "./forecast.js";
 import sigmaRouter from "./sigma.js";
 import intelRouter from "./intel.js";
+import replayRouter from "./replay.js";
+import incidentsRouter from "./incidents.js";
+import detailedHealthRouter from "./detailedHealth.js";
+import queryRouter from "./query.js";
 
 const router: IRouter = Router();
 
@@ -34,5 +38,9 @@ router.use(chainRouter);
 router.use(forecastRouter);
 router.use(sigmaRouter);
 router.use(intelRouter);
+router.use(replayRouter);
+router.use(incidentsRouter);
+router.use(detailedHealthRouter);
+router.use(queryRouter);
 
 export default router;

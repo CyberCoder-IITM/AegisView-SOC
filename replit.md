@@ -2,7 +2,7 @@
 
 ## Overview
 
-AegisView is a real-time network anomaly detection and compliance auditing dashboard for FinTech and Government SOC teams. "Wireshark + Splunk in a browser." Phase 2 adds AI threat narratives, MITRE ATT&CK kill chain, packet heatmap, attack simulation, behavioral baseline, TOR/threat intel enrichment, and forensic reporting.
+AegisView is a real-time network anomaly detection and compliance auditing dashboard for FinTech and Government SOC teams. "Wireshark + Splunk in a browser." Phase 4 (Final) adds 7 major features: Cinematic Onboarding, Session Replay/Timeline Scrubber, Shareable Incident Links, System Health Monitor, Natural Language Query Engine, Achievement System, and Live Network Topology Map.
 
 ## Stack
 
@@ -23,10 +23,17 @@ AegisView is a real-time network anomaly detection and compliance auditing dashb
 - Single-page scrollable dashboard at `/`
 - Dark SOC aesthetic (#0a0e1a background), 12+ panel layout
 - Components:
-  - `Header` — v2.0 badge, LEARNING/ACTIVE baseline pill, simulation active badge, LIVE clock
+  - `Header` — v2.0 badge, baseline pill, replay banner, QueryEngine/Achievements/IncidentManager/SystemHealth actions
+  - `Onboarding` — Cinematic terminal boot sequence + feature showcase (shows once, stored in localStorage)
+  - `TimelineScrubber` — Fixed bottom bar with sparkline, scrub to any 10s snapshot for replay mode
+  - `IncidentManager` — Bell dropdown, auto-creates incidents on CRITICAL threats, shareable links via `/incident/:id`
+  - `SystemHealth` — Header dropdown with 6 component status indicators + performance bars
+  - `QueryEngine` — Modal with Gemini AI natural language Q&A against live packet data, press `/` to open
+  - `Achievements` — 8 achievements (COMMON→LEGENDARY), toast notifications, gallery modal, persisted in localStorage
+  - `TopologyMap` — Canvas-based force simulation network topology with filters, drag support, edge/node tooltips
   - `MitreKillChain` — 5 hexagonal SVG nodes with animated arcs, polls every 3s
   - `ThreatLevelGauge` — SVG radial gauge (0-100 threat score)
-  - `GlobeMap` — Canvas-based world threat map with animated arcs
+  - `GlobeMap` — Canvas-based world threat map with animated arcs (tabbed with TopologyMap)
   - `ProtocolBreakdown` — Recharts donut chart (TCP/UDP/ICMP/OTHER)
   - `AnomalyChart` — Recharts line chart with z-score anomaly detection
   - `HeatmapPanel` — Pure SVG 30×20 packet velocity heatmap (port × time)
@@ -40,10 +47,11 @@ AegisView is a real-time network anomaly detection and compliance auditing dashb
 - Express 5 API at `/api`
 - In-memory packet simulator + 7 new modules
 
-#### New Libraries
+#### Libraries
 - `lib/threatIntel.ts` — TOR exit node detection, bulletproof ASN detection, reputation scoring
 - `lib/killchain.ts` — MITRE ATT&CK kill chain computation (recon, initial access, lateral, C2, exfil)
 - `lib/baseline.ts` — Behavioral baseline engine (LEARNING → ACTIVE, deviation tracking)
+- `lib/sessionRecorder.ts` — Records 10s snapshots (up to 60min history), provides timeline/scrubber data
 
 #### All Routes
 - `GET /api/packets` — Last 100 packets
@@ -65,6 +73,18 @@ AegisView is a real-time network anomaly detection and compliance auditing dashb
 - `POST /api/simulate/exfil` — Data exfiltration simulation
 - `POST /api/simulate/stop` — Stop all simulations
 - `GET /api/simulate/status` — Simulation status
+- `GET /api/replay/timeline` — Timeline points (threat_level, anomaly_count every 10s)
+- `GET /api/replay/snapshots` — Snapshot index list
+- `GET /api/replay/snapshot/:id` — Full snapshot for replay mode
+- `POST /api/incidents/create` — Create shareable incident with snapshot reference
+- `GET /api/incidents/:id` — Fetch incident + linked snapshot
+- `GET /api/incidents` — All incidents (reverse chronological)
+- `GET /api/health/detailed` — 6 component statuses + performance metrics
+- `POST /api/query` — Natural language query against live packet data (Gemini AI)
+
+### Routing
+- `/` — Main dashboard (Home.tsx)
+- `/incident/:id` — Load incident and enter replay mode for that snapshot
 
 ### Simulation Engine
 - Generates 1-10 packets every 500ms

@@ -7,9 +7,11 @@ interface HeaderProps {
   baselineMode?: "LEARNING" | "ACTIVE" | null;
   onWarRoom?: () => void;
   onShowShortcuts?: () => void;
+  replayTimestamp?: string | null;
+  extraActions?: React.ReactNode;
 }
 
-export function Header({ simulationActive, simulationMode, baselineMode, onWarRoom, onShowShortcuts }: HeaderProps) {
+export function Header({ simulationActive, simulationMode, baselineMode, onWarRoom, onShowShortcuts, replayTimestamp, extraActions }: HeaderProps) {
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -19,13 +21,10 @@ export function Header({ simulationActive, simulationMode, baselineMode, onWarRo
 
   return (
     <header style={{
-      height: 56,
       display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      padding: "0 var(--space-lg)",
+      flexDirection: "column",
       background: "var(--bg-secondary)",
-      borderBottom: "1px solid var(--bg-border)",
+      borderBottom: replayTimestamp ? "1px solid rgba(255,215,0,0.35)" : "1px solid var(--bg-border)",
       position: "sticky",
       top: 0,
       zIndex: 1000,
@@ -33,6 +32,32 @@ export function Header({ simulationActive, simulationMode, baselineMode, onWarRo
       boxSizing: "border-box",
       flexShrink: 0,
     }}>
+      {/* Replay banner */}
+      {replayTimestamp && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "center",
+          gap: 12, height: 24, flexShrink: 0,
+          background: "rgba(255,215,0,0.06)",
+          borderBottom: "1px solid rgba(255,215,0,0.15)",
+          fontFamily: "monospace", fontSize: "0.62rem",
+        }}>
+          <span style={{ color: "#ffd700", fontWeight: 700 }}>📼 REPLAY MODE</span>
+          <span style={{ color: "rgba(255,215,0,0.65)" }}>
+            Viewing snapshot from {new Date(replayTimestamp).toLocaleTimeString()} on {new Date(replayTimestamp).toLocaleDateString()}
+          </span>
+          <span style={{ color: "rgba(255,255,255,0.28)", fontSize: "0.58rem" }}>
+            — live data continues recording in background
+          </span>
+        </div>
+      )}
+      {/* Main row */}
+      <div style={{
+        height: 56, flexShrink: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        padding: "0 var(--space-lg)",
+      }}>
       {/* Left: logo + version */}
       <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)" }}>
         <Shield style={{ width: 16, height: 16, color: "var(--aegis-cyan)" }} />
@@ -50,8 +75,8 @@ export function Header({ simulationActive, simulationMode, baselineMode, onWarRo
         }}>v2.0</span>
       </div>
 
-      {/* Right: status indicators */}
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-md)", fontFamily: "monospace" }}>
+      {/* Right: status indicators + action items */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "monospace" }}>
         {/* Baseline mode pill */}
         {baselineMode && (
           <div style={{
@@ -74,6 +99,9 @@ export function Header({ simulationActive, simulationMode, baselineMode, onWarRo
             {baselineMode}
           </div>
         )}
+
+        {/* Extra action buttons (QueryEngine, Achievements, IncidentManager, SystemHealth) */}
+        {extraActions}
 
         {/* Simulation active badge */}
         {simulationActive && simulationMode && (
@@ -145,6 +173,7 @@ export function Header({ simulationActive, simulationMode, baselineMode, onWarRo
           <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--aegis-green)", animation: "pulse-glow 2s ease-in-out infinite" }} />
           <span style={{ color: "var(--aegis-green)", fontWeight: 700, letterSpacing: "0.1em", fontSize: "0.7rem" }}>LIVE</span>
         </div>
+      </div>
       </div>
     </header>
   );
