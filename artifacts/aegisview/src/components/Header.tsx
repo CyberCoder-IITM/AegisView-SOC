@@ -18,40 +18,74 @@ export function Header({ simulationActive, simulationMode, baselineMode, onWarRo
   }, []);
 
   return (
-    <header className="col-span-12 h-12 border-b border-border bg-card flex items-center justify-between px-6 z-10 relative shrink-0">
-      <div className="flex items-center gap-3">
-        <Shield className="w-4 h-4 text-primary" />
-        <h1 className="font-bold text-base tracking-widest text-foreground">
-          AEGIS<span className="text-primary">VIEW</span>
+    <header style={{
+      height: 56,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: "0 var(--space-lg)",
+      background: "var(--bg-secondary)",
+      borderBottom: "1px solid var(--bg-border)",
+      position: "sticky",
+      top: 0,
+      zIndex: 1000,
+      width: "100%",
+      boxSizing: "border-box",
+      flexShrink: 0,
+    }}>
+      {/* Left: logo + version */}
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)" }}>
+        <Shield style={{ width: 16, height: 16, color: "var(--aegis-cyan)" }} />
+        <h1 style={{ fontWeight: 800, fontSize: "1.1rem", letterSpacing: "0.15em", color: "#fff", margin: 0 }}>
+          AEGIS<span style={{ color: "var(--aegis-cyan)" }}>VIEW</span>
         </h1>
-        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded border border-primary/20 text-primary/60">v2.0</span>
+        <span style={{
+          fontSize: "0.65rem",
+          fontFamily: "monospace",
+          padding: "2px 8px",
+          borderRadius: 999,
+          background: "var(--bg-border)",
+          color: "var(--aegis-cyan)",
+          border: "1px solid rgba(0,212,255,0.2)",
+        }}>v2.0</span>
       </div>
 
-      <div className="flex items-center gap-4 font-mono text-xs">
+      {/* Right: status indicators */}
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-md)", fontFamily: "monospace" }}>
         {/* Baseline mode pill */}
         {baselineMode && (
-          <div
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-bold"
-            style={{
-              borderColor: baselineMode === "LEARNING" ? "#00d4ff44" : "#00ff8844",
-              color: baselineMode === "LEARNING" ? "#00d4ff" : "#00ff88",
-              background: baselineMode === "LEARNING" ? "#00d4ff11" : "#00ff8811",
-            }}
-          >
-            <div
-              className="w-1.5 h-1.5 rounded-full"
-              style={{
-                background: baselineMode === "LEARNING" ? "#00d4ff" : "#00ff88",
-                animation: baselineMode === "LEARNING" ? "blink-cursor 1s step-end infinite" : undefined,
-              }}
-            />
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "4px 12px",
+            borderRadius: 999,
+            border: `1px solid ${baselineMode === "LEARNING" ? "rgba(0,212,255,0.3)" : "rgba(0,255,136,0.3)"}`,
+            color: baselineMode === "LEARNING" ? "var(--aegis-cyan)" : "var(--aegis-green)",
+            background: baselineMode === "LEARNING" ? "rgba(0,212,255,0.08)" : "rgba(0,255,136,0.08)",
+            fontSize: "0.7rem",
+            fontWeight: 700,
+          }}>
+            <div style={{
+              width: 6, height: 6, borderRadius: "50%",
+              background: baselineMode === "LEARNING" ? "var(--aegis-cyan)" : "var(--aegis-green)",
+              animation: baselineMode === "LEARNING" ? "blink-cursor 1s step-end infinite" : undefined,
+            }} />
             {baselineMode}
           </div>
         )}
 
         {/* Simulation active badge */}
         {simulationActive && simulationMode && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-destructive/50 bg-destructive/10 text-destructive text-[10px] font-bold animate-pulse">
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "4px 12px", borderRadius: 999,
+            border: "1px solid rgba(255,0,51,0.5)",
+            background: "rgba(255,0,51,0.1)",
+            color: "var(--aegis-red)",
+            fontSize: "0.7rem", fontWeight: 700,
+            animation: "pulse-glow 2s ease-in-out infinite",
+          }}>
             🔴 SIM: {simulationMode.replace("_", " ").toUpperCase()}
           </div>
         )}
@@ -59,29 +93,57 @@ export function Header({ simulationActive, simulationMode, baselineMode, onWarRo
         {onWarRoom && (
           <button
             onClick={onWarRoom}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded border text-[10px] font-bold transition-colors hover:bg-destructive/10"
-            style={{ borderColor: "#ff003340", color: "#ff6b35" }}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              padding: "4px 12px", borderRadius: 4,
+              border: "1px solid rgba(255,0,51,0.3)",
+              background: "transparent",
+              color: "var(--aegis-orange)",
+              fontSize: "0.7rem", fontWeight: 700,
+              cursor: "pointer",
+              transition: "background 0.15s",
+            }}
             title="War Room Mode [W]"
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,0,51,0.1)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
           >
             ⚔ WAR ROOM
           </button>
         )}
+
         {onShowShortcuts && (
           <button
             onClick={onShowShortcuts}
-            className="text-[10px] font-mono px-1.5 py-0.5 rounded border hover:bg-white/5 transition-colors"
-            style={{ borderColor: "#333", color: "#555" }}
+            style={{
+              padding: "3px 8px",
+              borderRadius: 4,
+              border: "1px solid var(--bg-border)",
+              background: "transparent",
+              color: "var(--text-muted)",
+              fontSize: "0.7rem", fontFamily: "monospace",
+              cursor: "pointer",
+              transition: "background 0.15s",
+            }}
             title="Keyboard shortcuts"
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
           >
             ?
           </button>
         )}
-        <div className="text-muted-foreground text-[10px]">
+
+        <div style={{ color: "var(--text-muted)", fontSize: "0.65rem" }}>
           {time.toISOString().replace("T", " ").substring(0, 19)} UTC
         </div>
-        <div className="flex items-center gap-2 bg-success/10 px-3 py-1 rounded-full border border-success/20">
-          <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-          <span className="text-success font-bold tracking-wider text-[10px]">LIVE</span>
+
+        <div style={{
+          display: "flex", alignItems: "center", gap: 6,
+          padding: "4px 12px", borderRadius: 999,
+          background: "rgba(0,255,136,0.08)",
+          border: "1px solid rgba(0,255,136,0.2)",
+        }}>
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--aegis-green)", animation: "pulse-glow 2s ease-in-out infinite" }} />
+          <span style={{ color: "var(--aegis-green)", fontWeight: 700, letterSpacing: "0.1em", fontSize: "0.7rem" }}>LIVE</span>
         </div>
       </div>
     </header>

@@ -23,6 +23,7 @@ const MAX_ENTRIES = 1000;
 
 const chain: ChainEntry[] = [];
 let lastVerified: string = new Date().toISOString();
+let globalIndex = 0;
 
 function sha256(data: string): string {
   return createHash("sha256").update(data).digest("hex");
@@ -34,7 +35,7 @@ export function addPacket(packet: PacketRecord): ChainEntry {
   const chainHash = sha256(packetHash + previousHash);
 
   const entry: ChainEntry = {
-    index: chain.length,
+    index: globalIndex++,
     timestamp: new Date().toISOString(),
     packet_hash: packetHash,
     previous_hash: previousHash,

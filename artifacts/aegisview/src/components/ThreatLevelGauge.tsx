@@ -17,40 +17,30 @@ export function ThreatLevelGauge() {
 
   if (isLoading && !threatData) {
     return (
-      <div className="h-full w-full flex items-center justify-center p-4">
-        <Skeleton className="w-48 h-48 rounded-full opacity-20" />
+      <div style={{ height: "100%", width: "100%", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+        <Skeleton className="w-40 h-40 rounded-full opacity-20" />
       </div>
     );
   }
 
-  // 0-30 NORMAL, 31-60 ELEVATED, 61-85 HIGH, 86-100 CRITICAL
-  let color = "hsl(var(--success))"; // #00ff88
-  if (score > 85) color = "hsl(var(--destructive))"; // #ff0033
-  else if (score > 60) color = "#ff6b35";
-  else if (score > 30) color = "hsl(var(--warning))"; // #ffd700
+  let color = "var(--aegis-green)";
+  if (score > 85) color = "var(--aegis-red)";
+  else if (score > 60) color = "var(--aegis-orange)";
+  else if (score > 30) color = "var(--aegis-yellow)";
 
+  const label = score > 85 ? "CRITICAL" : score > 60 ? "HIGH" : score > 30 ? "ELEVATED" : "NORMAL";
   const isPulsing = score > 60;
-  
-  // Calculate arc
+
   const r = 90;
-  const cx = 100;
-  const cy = 100;
   const circumference = Math.PI * r;
   const offset = circumference - (score / 100) * circumference;
 
   return (
-    <div id="threat-gauge" className="flex flex-col items-center justify-center h-full p-4 relative">
-      <div className={`relative w-48 h-24 overflow-hidden ${isPulsing ? 'animate-pulse' : ''}`}>
-        <svg viewBox="0 0 200 100" className="w-full h-full overflow-visible">
-          {/* Background Arc */}
-          <path
-            d="M 10 100 A 90 90 0 0 1 190 100"
-            fill="none"
-            stroke="rgba(255,255,255,0.1)"
-            strokeWidth="12"
-            strokeLinecap="round"
-          />
-          {/* Foreground Arc */}
+    <div id="threat-gauge" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: 16, gap: 12 }}>
+      {/* Gauge arc */}
+      <div style={{ position: "relative", width: 200, height: 100, overflow: "visible", animation: isPulsing ? "pulse-glow 2s ease-in-out infinite" : undefined }}>
+        <svg viewBox="0 0 200 100" style={{ width: "100%", height: "100%", overflow: "visible" }}>
+          <path d="M 10 100 A 90 90 0 0 1 190 100" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="12" strokeLinecap="round" />
           <path
             d="M 10 100 A 90 90 0 0 1 190 100"
             fill="none"
@@ -59,26 +49,32 @@ export function ThreatLevelGauge() {
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={offset}
-            className="transition-all duration-1000 ease-out"
+            style={{ transition: "stroke-dashoffset 1s ease-out, stroke 0.5s ease", filter: `drop-shadow(0 0 6px ${color})` }}
           />
         </svg>
-        <div className="absolute bottom-0 left-0 w-full text-center">
-          <div className="text-4xl font-bold font-mono tracking-tighter" style={{ color }}>
+        <div style={{ position: "absolute", bottom: 0, left: 0, width: "100%", textAlign: "center" }}>
+          <div style={{ fontSize: "2.5rem", fontWeight: 900, fontFamily: "monospace", lineHeight: 1, color, letterSpacing: "-0.02em" }}>
             {score}
-          </div>
-          <div className="text-xs uppercase tracking-widest text-muted-foreground mt-1 font-bold">
-            {threatData?.label || "UNKNOWN"}
           </div>
         </div>
       </div>
-      
-      <div className="mt-6 flex w-full justify-center px-6 text-xs text-muted-foreground">
-        <div className="flex flex-col items-center">
-          <span className="uppercase text-[10px] opacity-70">Compliance Flags</span>
-          <span className="font-mono text-foreground font-bold mt-1 text-warning">
-            {threatData?.active_compliance_flags || 0}
-          </span>
+
+      {/* Label */}
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontSize: "0.85rem", fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color, marginBottom: 4 }}>
+          {label}
         </div>
+        <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+          Current Risk Score
+        </div>
+      </div>
+
+      {/* Compliance flags */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, marginTop: 4 }}>
+        <span style={{ fontSize: "0.65rem", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)" }}>Compliance Flags</span>
+        <span style={{ fontFamily: "monospace", fontWeight: 700, fontSize: "1.1rem", color: "var(--aegis-yellow)" }}>
+          {threatData?.active_compliance_flags || 0}
+        </span>
       </div>
     </div>
   );

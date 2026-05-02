@@ -1,7 +1,8 @@
 import React, { useRef, useEffect } from "react";
 import { useGetPackets } from "@workspace/api-client-react";
-import { Badge } from "@/components/ui/badge";
 import { enrichIp } from "@/lib/threatIntel";
+
+const COL = "80px 130px 130px 52px 52px 58px 90px 70px";
 
 export function PacketFeed() {
   const { data: packets } = useGetPackets({
@@ -10,9 +11,7 @@ export function PacketFeed() {
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (listRef.current) {
-      listRef.current.scrollTop = 0;
-    }
+    if (listRef.current) listRef.current.scrollTop = 0;
   }, [packets?.length]);
 
   const rows = [...(packets || [])].sort((a, b) => {
@@ -24,24 +23,36 @@ export function PacketFeed() {
   });
 
   return (
-    <div className="w-full h-full flex flex-col">
-      <div className="flex items-center text-[10px] uppercase font-bold text-muted-foreground px-3 py-2 bg-card border-b border-border tracking-wider shrink-0">
-        <div className="w-20 shrink-0">Time</div>
-        <div className="w-36 shrink-0">Source</div>
-        <div className="w-36 shrink-0">Destination</div>
-        <div className="w-12 shrink-0">Proto</div>
-        <div className="w-12 shrink-0 text-right">Size</div>
-        <div className="w-16 shrink-0 text-center">Flags</div>
-        <div className="w-24 shrink-0 text-center">Intel</div>
-        <div className="flex-1 text-right">Severity</div>
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", boxSizing: "border-box" }}>
+      {/* Column header */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: COL,
+        fontSize: "0.65rem",
+        fontFamily: "monospace",
+        color: "var(--text-muted)",
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+        padding: "var(--space-xs) var(--space-sm)",
+        borderBottom: "1px solid var(--bg-border)",
+        flexShrink: 0,
+        background: "var(--bg-secondary)",
+        alignItems: "center",
+      }}>
+        <div>Time</div>
+        <div>Source</div>
+        <div>Destination</div>
+        <div>Proto</div>
+        <div style={{ textAlign: "right" }}>Size</div>
+        <div style={{ textAlign: "center" }}>Flags</div>
+        <div style={{ textAlign: "center" }}>Intel</div>
+        <div style={{ textAlign: "right" }}>Severity</div>
       </div>
-      <div
-        ref={listRef}
-        className="flex-1 overflow-y-auto min-h-0"
-        style={{ maxHeight: 420 }}
-      >
+
+      {/* Rows */}
+      <div ref={listRef} style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
         {rows.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-primary animate-pulse font-mono text-xs py-12">
+          <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--aegis-cyan)", fontFamily: "monospace", fontSize: "0.75rem", padding: 24 }} className="animate-pulse">
             WAITING FOR PACKETS...
           </div>
         ) : (
@@ -51,18 +62,22 @@ export function PacketFeed() {
             const isCritical = p.is_anomaly && p.severity === "CRITICAL";
             const isHigh = p.is_anomaly && p.severity === "HIGH";
 
+            const protoColor = p.protocol === "TCP" ? "var(--aegis-cyan)" : p.protocol === "UDP" ? "var(--aegis-purple)" : p.protocol === "ICMP" ? "var(--aegis-orange)" : "var(--aegis-grey)";
+
             return (
               <div
                 key={p.id}
-                className="flex items-center text-xs font-mono px-3 border-b"
                 style={{
-                  height: 34,
-                  borderBottomColor: isHighRep ? "rgba(255,0,51,0.2)" : "rgba(255,255,255,0.02)",
-                  borderLeftWidth: isHighRep ? 3 : 0,
-                  borderLeftColor: "#ff0033",
-                  borderLeftStyle: "solid",
-                  backgroundColor: isCritical || isHighRep
-                    ? "rgba(255,0,51,0.12)"
+                  display: "grid",
+                  gridTemplateColumns: COL,
+                  alignItems: "center",
+                  padding: "5px var(--space-sm)",
+                  fontSize: "0.72rem",
+                  fontFamily: "monospace",
+                  borderBottom: `1px solid ${isHighRep ? "rgba(255,0,51,0.15)" : "rgba(30,45,64,0.5)"}`,
+                  borderLeft: isHighRep ? "3px solid var(--aegis-red)" : "3px solid transparent",
+                  background: isCritical || isHighRep
+                    ? "rgba(255,0,51,0.1)"
                     : isHigh
                     ? "rgba(255,107,53,0.06)"
                     : index % 2 === 0
@@ -70,49 +85,49 @@ export function PacketFeed() {
                     : "transparent",
                 }}
               >
-                <div className="w-20 shrink-0 truncate opacity-60 text-[10px]">
+                <div style={{ opacity: 0.55, fontSize: "0.65rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {p.timestamp.split("T")[1]?.substring(0, 8) || "--"}
                 </div>
-                <div className="w-36 shrink-0 truncate text-primary text-[10px]">
+                <div style={{ color: "var(--aegis-cyan)", fontSize: "0.68rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {p.src_ip}:{p.src_port}
                 </div>
-                <div className="w-36 shrink-0 truncate text-[10px]">
+                <div style={{ fontSize: "0.68rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-secondary)" }}>
                   {p.dst_ip}:{p.dst_port}
                 </div>
-                <div className="w-12 shrink-0 font-bold text-[10px]" style={{ color: p.protocol === "TCP" ? "#00d4ff" : p.protocol === "UDP" ? "#7b2fff" : p.protocol === "ICMP" ? "#ff6b35" : "#888" }}>
+                <div style={{ fontWeight: 700, fontSize: "0.68rem", color: protoColor }}>
                   {p.protocol}
                 </div>
-                <div className="w-12 shrink-0 text-right opacity-60 text-[10px]">
+                <div style={{ textAlign: "right", opacity: 0.55, fontSize: "0.68rem" }}>
                   {p.length}B
                 </div>
-                <div className="w-16 shrink-0 text-center opacity-70 text-[10px]">
+                <div style={{ textAlign: "center", opacity: 0.65, fontSize: "0.68rem" }}>
                   {p.flags || "-"}
                 </div>
-                <div className="w-24 shrink-0 flex items-center gap-0.5 justify-center">
+                <div style={{ display: "flex", alignItems: "center", gap: 2, justifyContent: "center" }}>
                   {intel?.is_tor && (
-                    <span className="text-[8px] font-bold px-1 py-0.5 rounded-sm" style={{ background: "#ff0033", color: "#fff" }}>☠TOR</span>
+                    <span style={{ fontSize: "0.6rem", fontWeight: 700, padding: "1px 4px", borderRadius: 2, background: "var(--aegis-red)", color: "#fff" }}>☠TOR</span>
                   )}
                   {intel?.is_bulletproof && (
-                    <span className="text-[8px] font-bold px-1 py-0.5 rounded-sm" style={{ background: "#ff6b35", color: "#fff" }}>BPH</span>
+                    <span style={{ fontSize: "0.6rem", fontWeight: 700, padding: "1px 4px", borderRadius: 2, background: "var(--aegis-orange)", color: "#fff" }}>BPH</span>
                   )}
                   {intel?.threat_tags.includes("SCANNER") && (
-                    <span className="text-[8px] font-bold px-1 py-0.5 rounded-sm" style={{ background: "#ffd700", color: "#000" }}>🔍</span>
+                    <span style={{ fontSize: "0.6rem", fontWeight: 700, padding: "1px 4px", borderRadius: 2, background: "var(--aegis-yellow)", color: "#000" }}>🔍</span>
                   )}
                   {intel && intel.reputation_score > 0 && (
-                    <span className="text-[8px] opacity-60" style={{ color: intel.reputation_score > 50 ? "#ff0033" : "#ffd700" }}>
+                    <span style={{ fontSize: "0.6rem", opacity: 0.6, color: intel.reputation_score > 50 ? "var(--aegis-red)" : "var(--aegis-yellow)" }}>
                       {intel.reputation_score}
                     </span>
                   )}
                 </div>
-                <div className="flex-1 flex justify-end">
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
                   {p.severity === "CRITICAL" ? (
-                    <Badge variant="destructive" className="text-[9px] h-5 rounded-sm px-1.5">CRIT</Badge>
+                    <span style={{ display: "inline-flex", alignItems: "center", padding: "1px 6px", borderRadius: 3, fontSize: "0.6rem", fontWeight: 700, background: "rgba(255,0,51,0.2)", color: "var(--aegis-red)", border: "1px solid rgba(255,0,51,0.4)" }}>CRIT</span>
                   ) : p.severity === "HIGH" ? (
-                    <Badge className="bg-[rgba(255,107,53,0.2)] text-[#ff6b35] hover:bg-[rgba(255,107,53,0.2)] border-[#ff6b35]/30 text-[9px] h-5 rounded-sm px-1.5">HIGH</Badge>
+                    <span style={{ display: "inline-flex", alignItems: "center", padding: "1px 6px", borderRadius: 3, fontSize: "0.6rem", fontWeight: 700, background: "rgba(255,107,53,0.15)", color: "var(--aegis-orange)", border: "1px solid rgba(255,107,53,0.3)" }}>HIGH</span>
                   ) : p.severity === "MED" ? (
-                    <Badge className="bg-[rgba(255,215,0,0.15)] text-[#ffd700] hover:bg-[rgba(255,215,0,0.15)] border-[#ffd700]/30 text-[9px] h-5 rounded-sm px-1.5">MED</Badge>
+                    <span style={{ display: "inline-flex", alignItems: "center", padding: "1px 6px", borderRadius: 3, fontSize: "0.6rem", fontWeight: 700, background: "rgba(255,215,0,0.12)", color: "var(--aegis-yellow)", border: "1px solid rgba(255,215,0,0.3)" }}>MED</span>
                   ) : (
-                    <Badge className="bg-[rgba(0,255,136,0.08)] text-[#00ff88] hover:bg-[rgba(0,255,136,0.08)] border-[#00ff88]/20 text-[9px] h-5 rounded-sm px-1.5">OK</Badge>
+                    <span style={{ display: "inline-flex", alignItems: "center", padding: "1px 6px", borderRadius: 3, fontSize: "0.6rem", fontWeight: 700, background: "rgba(0,255,136,0.08)", color: "var(--aegis-green)", border: "1px solid rgba(0,255,136,0.2)" }}>OK</span>
                   )}
                 </div>
               </div>

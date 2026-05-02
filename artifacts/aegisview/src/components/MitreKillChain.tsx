@@ -21,13 +21,16 @@ function HexNode({ stage, active, isFlashing }: { stage: KillChainStage; active:
   const hexPoints = "50,5 95,27 95,73 50,95 5,73 5,27";
 
   return (
-    <div className="relative flex flex-col items-center gap-1" style={{ animation: isConfirmed && isFlashing ? "hex-shake 0.5s ease-in-out" : undefined }}>
+    <div
+      className="relative flex flex-col items-center gap-0.5"
+      style={{ animation: isConfirmed && isFlashing ? "hex-shake 0.5s ease-in-out" : undefined, flexShrink: 0 }}
+    >
       <div
         className="relative cursor-pointer"
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
       >
-        <svg width="80" height="80" viewBox="0 0 100 100">
+        <svg width="72" height="72" viewBox="0 0 100 100">
           <defs>
             <filter id={`glow-${stage.id}`}>
               <feGaussianBlur stdDeviation={isConfirmed ? "4" : isSuspected ? "3" : "0"} result="coloredBlur" />
@@ -56,27 +59,33 @@ function HexNode({ stage, active, isFlashing }: { stage: KillChainStage; active:
         </svg>
 
         {showTooltip && (
-          <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-50 w-64 bg-[#0a0e1a] border border-border rounded p-3 text-xs font-mono shadow-xl pointer-events-none">
+          <div
+            className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-50 w-64 rounded-lg p-3 text-xs font-mono shadow-xl pointer-events-none"
+            style={{ background: "var(--bg-primary)", border: "var(--card-border)" }}
+          >
             <div className="font-bold mb-1" style={{ color: glowColor }}>{stage.stage}</div>
-            <div className="text-muted-foreground mb-1">ATT&CK ID: {stage.id}</div>
-            <div className="text-foreground">{stage.evidence}</div>
+            <div style={{ color: "var(--text-secondary)" }} className="mb-1">ATT&CK ID: {stage.id}</div>
+            <div style={{ color: "var(--text-primary)" }}>{stage.evidence}</div>
             {active && <div className="mt-1 font-bold" style={{ color: glowColor }}>Confidence: {stage.confidence}%</div>}
           </div>
         )}
       </div>
-      <div className="text-[9px] font-mono font-bold text-center uppercase tracking-wider" style={{ color: active ? glowColor : "#3a3a5e", maxWidth: 80 }}>
+      <div
+        className="text-[9px] font-mono font-bold text-center uppercase tracking-wider whitespace-nowrap"
+        style={{ color: active ? glowColor : "#3a3a5e", maxWidth: 72 }}
+      >
         {stage.stage}
       </div>
     </div>
   );
 }
 
-function FlowLine({ fromStatus, toStatus }: { fromStatus: KillChainStage["status"]; toStatus: KillChainStage["status"] }) {
+function FlowLine({ fromStatus }: { fromStatus: KillChainStage["status"] }) {
   const isActive = fromStatus === "CONFIRMED";
   const color = isActive ? "#ff0033" : fromStatus === "SUSPECTED" ? "#ffd70044" : "#1a1a2e";
 
   return (
-    <div className="flex-1 flex items-center justify-center" style={{ height: 80, marginBottom: 20 }}>
+    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: 20 }}>
       <svg width="100%" height="4" style={{ overflow: "visible" }}>
         <line
           x1="0" y1="2" x2="100%" y2="2"
@@ -130,31 +139,37 @@ export function MitreKillChain() {
 
   return (
     <div
-      className="w-full border-b border-border bg-card px-6 py-3"
       style={{
+        padding: "var(--space-sm) var(--space-lg)",
         borderColor: flashing ? "rgba(255,0,51,0.8)" : undefined,
         boxShadow: flashing ? "0 0 20px rgba(255,0,51,0.3)" : undefined,
         transition: "border-color 0.3s, box-shadow 0.3s",
       }}
     >
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">MITRE ATT&CK Kill Chain</span>
+      {/* Header row */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "var(--space-sm)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <span style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-secondary)" }}>
+            MITRE ATT&CK Kill Chain
+          </span>
           {hasActive && (
-            <span className="text-[9px] font-mono px-2 py-0.5 rounded-full border border-destructive/40 text-destructive animate-pulse">
+            <span
+              className="animate-pulse"
+              style={{ fontSize: "0.6rem", fontFamily: "monospace", padding: "2px 8px", borderRadius: 999, border: "1px solid rgba(255,0,51,0.4)", color: "#ff0033" }}
+            >
               ACTIVE THREAT
             </span>
           )}
         </div>
-        <div className="text-[9px] text-muted-foreground font-mono">Polls every 3s</div>
       </div>
 
-      <div className="flex items-start gap-0">
+      {/* Hex chain */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 0 }}>
         {stages.map((stage, i) => (
           <React.Fragment key={stage.id}>
             <HexNode stage={stage} active={stage.status !== "INACTIVE"} isFlashing={flashing} />
             {i < stages.length - 1 && (
-              <FlowLine fromStatus={stage.status} toStatus={stages[i + 1].status} />
+              <FlowLine fromStatus={stage.status} />
             )}
           </React.Fragment>
         ))}

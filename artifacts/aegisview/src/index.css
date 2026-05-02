@@ -100,7 +100,36 @@
   --app-font-sans: 'Inter', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: 'JetBrains Mono', 'Fira Code', Menlo, monospace;
-  --radius: 0.25rem;
+  --radius: 0.75rem;
+
+  /* ── AegisView Design System ───────────────────────── */
+  --bg-primary:    #0a0e1a;
+  --bg-secondary:  #0d1117;
+  --bg-card:       #111827;
+  --bg-card-hover: #1a2235;
+  --bg-border:     #1e2d40;
+
+  --aegis-cyan:    #00d4ff;
+  --aegis-green:   #00ff88;
+  --aegis-yellow:  #ffd700;
+  --aegis-orange:  #ff6b35;
+  --aegis-red:     #ff0033;
+  --aegis-purple:  #7b2fff;
+  --aegis-grey:    #4a5568;
+
+  --text-primary:   #e2e8f0;
+  --text-secondary: #8892a4;
+  --text-muted:     #4a5568;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  --panel-radius:  12px;
+  --card-border:   1px solid var(--bg-border);
+  --card-shadow:   0 4px 24px rgba(0, 0, 0, 0.4);
 }
 
 @layer base {
@@ -109,12 +138,47 @@
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
-    background-image: radial-gradient(hsl(190 100% 50% / 0.05) 1px, transparent 1px);
+    @apply font-sans antialiased;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    background-image: radial-gradient(hsl(190 100% 50% / 0.04) 1px, transparent 1px);
     background-size: 32px 32px;
   }
 }
 
+/* ── Custom scrollbars ─────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg-border) transparent;
+}
+*::-webkit-scrollbar        { width: 4px; height: 4px; }
+*::-webkit-scrollbar-track  { background: transparent; }
+*::-webkit-scrollbar-thumb  { background: var(--bg-border); border-radius: 999px; }
+*::-webkit-scrollbar-thumb:hover { background: var(--aegis-grey); }
+
+/* ── Panel header standard ─────────────────────────────── */
+.panel-header {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--bg-border);
+  margin-bottom: var(--space-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── Severity badge standard ───────────────────────────── */
+.badge-ok   { background: #0a2a1a; color: var(--aegis-green);  border: 1px solid rgba(0,255,136,0.3); }
+.badge-warn { background: #2a2000; color: var(--aegis-yellow); border: 1px solid rgba(255,215,0,0.3); }
+.badge-high { background: #2a1500; color: var(--aegis-orange); border: 1px solid rgba(255,107,53,0.3); }
+.badge-crit { background: #2a0010; color: var(--aegis-red);    border: 1px solid rgba(255,0,51,0.3); }
+.badge-tor  { background: #1a0000; color: #ff4444;             border: 1px solid rgba(255,68,68,0.4); }
+
+/* ── Animations ────────────────────────────────────────── */
 @keyframes pulse-glow {
   0%, 100% { box-shadow: 0 0 5px currentColor; }
   50% { box-shadow: 0 0 20px currentColor, 0 0 40px currentColor; }
@@ -153,10 +217,10 @@
   to { transform: translateY(0); opacity: 1; }
 }
 
-.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
-.animate-slide-in-up { animation: slide-in-up 0.4s ease-out; }
+.animate-pulse-glow   { animation: pulse-glow 2s ease-in-out infinite; }
+.animate-slide-in-up  { animation: slide-in-up 0.4s ease-out; }
 .animate-particle-flow { animation: particle-flow 1.5s linear infinite; }
-.animate-panel-flash { animation: panel-flash-red 1s ease-in-out; }
-.animate-hex-shake { animation: hex-shake 0.5s ease-in-out; }
+.animate-panel-flash  { animation: panel-flash-red 1s ease-in-out; }
+.animate-hex-shake    { animation: hex-shake 0.5s ease-in-out; }
 .animate-blink-cursor { animation: blink-cursor 1s step-end infinite; }
 .animate-sim-slide-up { animation: sim-slide-up 0.3s ease-out; }

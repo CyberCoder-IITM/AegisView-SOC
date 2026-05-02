@@ -8,12 +8,12 @@ interface HeatmapData {
 }
 
 function countToColor(count: number, max: number): string {
-  if (count === 0 || max === 0) return "#0a0e1a";
+  if (count === 0 || max === 0) return "var(--bg-primary)";
   const ratio = count / max;
-  if (ratio < 0.01) return "#0a0e1a";
-  if (ratio < 0.2) return "#003366";
-  if (ratio < 0.5) return "#0066cc";
-  if (ratio < 0.8) return "#ff6b35";
+  if (ratio < 0.01) return "var(--bg-primary)";
+  if (ratio < 0.2)  return "#003366";
+  if (ratio < 0.5)  return "#0066cc";
+  if (ratio < 0.8)  return "#ff6b35";
   return "#ff0033";
 }
 
@@ -37,8 +37,8 @@ export function HeatmapPanel() {
 
   if (!data) {
     return (
-      <div className="w-full border-b border-border bg-card px-6 py-4 flex items-center justify-center">
-        <div className="text-xs font-mono text-muted-foreground animate-pulse">BUILDING HEATMAP...</div>
+      <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontSize: "0.75rem", fontFamily: "monospace", color: "var(--text-muted)" }} className="animate-pulse">BUILDING HEATMAP...</div>
       </div>
     );
   }
@@ -54,21 +54,25 @@ export function HeatmapPanel() {
   const svgH = LABEL_H + rows * (CELL_H + GAP);
 
   return (
-    <div className="w-full border-b border-border bg-card px-6 py-3">
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", boxSizing: "border-box", padding: 12 }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexShrink: 0 }}>
+        <span style={{ fontSize: "0.7rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-secondary)" }}>
           Packet Velocity Heatmap — Port × Time
         </span>
-        <div className="flex items-center gap-3 text-[9px] font-mono text-muted-foreground">
-          <span className="flex items-center gap-1"><span className="inline-block w-3 h-2 rounded-sm" style={{ background: "#003366" }} /> Low</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-3 h-2 rounded-sm" style={{ background: "#0066cc" }} /> Med</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-3 h-2 rounded-sm" style={{ background: "#ff6b35" }} /> High</span>
-          <span className="flex items-center gap-1"><span className="inline-block w-3 h-2 rounded-sm" style={{ background: "#ff0033" }} /> Critical</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: "0.65rem", fontFamily: "monospace", color: "var(--text-muted)" }}>
+          {[["#003366","Low"],["#0066cc","Med"],["#ff6b35","High"],["#ff0033","Critical"]].map(([bg,label]) => (
+            <span key={label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ display: "inline-block", width: 10, height: 8, borderRadius: 2, background: bg }} />
+              {label}
+            </span>
+          ))}
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <div className="relative inline-block" style={{ minWidth: svgW }}>
+      {/* SVG — scrolls horizontally, clipped vertically */}
+      <div style={{ flex: 1, overflowX: "auto", overflowY: "hidden", minHeight: 0 }}>
+        <div style={{ display: "inline-block", minWidth: svgW }}>
           <svg width={svgW} height={svgH} style={{ display: "block" }}>
             {/* Port labels (Y axis) */}
             {data.port_labels.map((port, ri) => (
@@ -85,7 +89,7 @@ export function HeatmapPanel() {
               </text>
             ))}
 
-            {/* Time labels (X axis) — rotated 45° */}
+            {/* Time labels (X axis) */}
             {data.time_labels.map((label, ci) => {
               if (ci % 5 !== 0) return null;
               return (
@@ -114,10 +118,8 @@ export function HeatmapPanel() {
                 return (
                   <rect
                     key={`${ri}-${ci}`}
-                    x={x}
-                    y={y}
-                    width={CELL_W}
-                    height={CELL_H}
+                    x={x} y={y}
+                    width={CELL_W} height={CELL_H}
                     fill={color}
                     rx={1}
                     style={{ transition: "fill 0.5s ease", cursor: count > 0 ? "pointer" : "default" }}
@@ -138,12 +140,12 @@ export function HeatmapPanel() {
 
       {tooltip && (
         <div
-          className="fixed z-50 pointer-events-none bg-[#0a0e1a] border border-primary/30 rounded p-2 text-xs font-mono shadow-xl"
-          style={{ left: tooltip.x + 10, top: tooltip.y - 40 }}
+          className="fixed z-50 pointer-events-none rounded-md p-2 text-xs font-mono shadow-xl"
+          style={{ left: tooltip.x + 10, top: tooltip.y - 40, background: "var(--bg-primary)", border: "var(--card-border)" }}
         >
-          <div className="text-primary">Port {tooltip.port}</div>
-          <div className="text-muted-foreground">{tooltip.time}</div>
-          <div className="font-bold text-warning">{tooltip.count} packets</div>
+          <div style={{ color: "var(--aegis-cyan)" }}>Port {tooltip.port}</div>
+          <div style={{ color: "var(--text-muted)" }}>{tooltip.time}</div>
+          <div style={{ fontWeight: 700, color: "var(--aegis-yellow)" }}>{tooltip.count} packets</div>
         </div>
       )}
     </div>

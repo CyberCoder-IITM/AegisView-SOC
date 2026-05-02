@@ -94,7 +94,7 @@ export function IntegrityChain() {
         {/* Visual chain — last 10 entries */}
         <div className="flex items-center gap-0.5 overflow-x-auto py-1">
           {entries.slice(0, 10).map((e, i) => (
-            <React.Fragment key={e.index}>
+            <React.Fragment key={e.chain_hash}>
               <div
                 title={`#${e.index} | ${e.timestamp.slice(11, 19)} | ${e.chain_hash}`}
                 className="shrink-0 flex flex-col items-center px-1.5 py-1 rounded cursor-default hover:opacity-80 transition-opacity"

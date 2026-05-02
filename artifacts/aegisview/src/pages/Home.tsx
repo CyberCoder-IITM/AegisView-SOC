@@ -28,6 +28,25 @@ interface AnomalyLike {
 }
 interface BaselineStatus { mode: "LEARNING" | "ACTIVE" }
 
+const CARD: React.CSSProperties = {
+  background: "var(--bg-card)",
+  border: "var(--card-border)",
+  borderRadius: "var(--panel-radius)",
+  boxShadow: "var(--card-shadow)",
+  overflow: "hidden",
+  boxSizing: "border-box",
+  width: "100%",
+  height: "100%",
+};
+
+const ROW_GRID = (cols: string, h: string | number): React.CSSProperties => ({
+  gridColumn: "1 / -1",
+  display: "grid",
+  gridTemplateColumns: cols,
+  gap: "var(--space-md)",
+  height: typeof h === "number" ? `${h}px` : h,
+});
+
 export default function Home() {
   const [simActive, setSimActive] = useState(false);
   const [simMode, setSimMode] = useState<string | null>(null);
@@ -37,7 +56,6 @@ export default function Home() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const BASE = (import.meta as { env: Record<string, string> }).env.BASE_URL?.replace(/\/$/, "") ?? "";
 
-  // Poll latest anomalies for AI panel
   useEffect(() => {
     const poll = async () => {
       try {
@@ -52,7 +70,6 @@ export default function Home() {
     return () => clearInterval(iv);
   }, [BASE]);
 
-  // Poll baseline mode
   useEffect(() => {
     const poll = async () => {
       try {
@@ -66,7 +83,6 @@ export default function Home() {
     return () => clearInterval(iv);
   }, [BASE]);
 
-  // Global keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -93,21 +109,25 @@ export default function Home() {
   }, [BASE]);
 
   return (
-    <div className="h-screen bg-background text-foreground flex flex-col overflow-hidden">
+    <div style={{ height: "100vh", background: "var(--bg-primary)", color: "var(--text-primary)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {warRoomOpen && <WarRoom onClose={() => setWarRoomOpen(false)} />}
 
       {/* Keyboard shortcut legend */}
       {showShortcuts && (
         <div className="fixed inset-0 z-[9998] flex items-center justify-center" onClick={() => setShowShortcuts(false)}>
-          <div className="font-mono text-xs rounded-lg p-6 max-w-xs" style={{ background: "#0d1117", border: "1px solid #1a2a3a" }} onClick={e => e.stopPropagation()}>
-            <div className="font-bold mb-3 text-sm" style={{ color: "#00d4ff" }}>Keyboard Shortcuts</div>
+          <div
+            className="font-mono text-xs rounded-xl p-6 max-w-xs"
+            style={{ background: "var(--bg-secondary)", border: "var(--card-border)", boxShadow: "var(--card-shadow)" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="font-bold mb-3 text-sm" style={{ color: "var(--aegis-cyan)" }}>Keyboard Shortcuts</div>
             {[["W", "Toggle War Room"], ["R", "Trigger AI analysis"], ["C", "Verify chain integrity"], ["E", "Export forensic report"], ["?", "Show this legend"], ["ESC", "Close overlays"]].map(([k, v]) => (
               <div key={k} className="flex items-center gap-3 mb-1.5">
-                <kbd className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "#1a2a3a", color: "#00d4ff", border: "1px solid #2a3a4a" }}>{k}</kbd>
-                <span style={{ color: "#888" }}>{v}</span>
+                <kbd className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: "#1a2a3a", color: "var(--aegis-cyan)", border: "1px solid #2a3a4a" }}>{k}</kbd>
+                <span style={{ color: "var(--text-secondary)" }}>{v}</span>
               </div>
             ))}
-            <div className="mt-3 text-[9px]" style={{ color: "#333" }}>Click anywhere to close</div>
+            <div className="mt-3 text-[9px]" style={{ color: "var(--text-muted)" }}>Click anywhere to close</div>
           </div>
         </div>
       )}
@@ -121,85 +141,97 @@ export default function Home() {
         onShowShortcuts={() => setShowShortcuts(v => !v)}
       />
 
-      {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+      {/* Live Stats Bar */}
+      <LiveStatsBar />
 
-        {/* Live Stats Bar */}
-        <LiveStatsBar />
+      {/* Scrollable dashboard grid */}
+      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(12, 1fr)",
+          gap: "var(--space-md)",
+          padding: "var(--space-md)",
+          boxSizing: "border-box",
+        }}>
 
-        {/* Row 0: MITRE Kill Chain */}
-        <MitreKillChain />
+          {/* Row 0: MITRE Kill Chain — full width */}
+          <div style={{ gridColumn: "1 / -1", ...CARD, height: "auto" }}>
+            <MitreKillChain />
+          </div>
 
-        {/* Row 1: Threat Gauge + Globe + SOC Agent */}
-        <div className="flex border-b border-border">
-          <div className="w-72 shrink-0 border-r border-border bg-card">
-            <ThreatLevelGauge />
+          {/* Row 1: Threat Gauge + Globe + SOC Agent */}
+          <div style={ROW_GRID("2fr 5fr 3fr", 320)}>
+            <div style={CARD}>
+              <ThreatLevelGauge />
+            </div>
+            <div style={{ ...CARD, background: "#000910", position: "relative" }}>
+              <Suspense fallback={
+                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-primary)" }}>
+                  <Skeleton className="w-48 h-48 rounded-full opacity-10" />
+                </div>
+              }>
+                <div className="absolute inset-0 overflow-hidden">
+                  <GlobeMap />
+                </div>
+              </Suspense>
+            </div>
+            <div style={CARD}>
+              <SOCAgentPanel />
+            </div>
           </div>
-          <div className="flex-1 bg-black relative border-r border-border" style={{ height: 280 }}>
-            <Suspense fallback={
-              <div className="w-full h-full flex items-center justify-center bg-[#0a0e1a]">
-                <Skeleton className="w-48 h-48 rounded-full opacity-10" />
-              </div>
-            }>
-              <div className="absolute inset-0 overflow-hidden">
-                <GlobeMap />
-              </div>
-            </Suspense>
+
+          {/* Row 2: Protocol Breakdown + Z-Score Chart + Device Radar */}
+          <div style={ROW_GRID("2fr 5fr 3fr", 260)}>
+            <div style={CARD}>
+              <ProtocolBreakdown />
+            </div>
+            <div style={CARD}>
+              <AnomalyChart />
+            </div>
+            <div style={CARD}>
+              <DeviceRadar />
+            </div>
           </div>
-          <div className="w-96 shrink-0" style={{ height: 280 }}>
-            <SOCAgentPanel />
+
+          {/* Row 3: Heatmap + Threat Intel */}
+          <div style={ROW_GRID("7fr 5fr", 220)}>
+            <div style={{ ...CARD, overflowX: "auto", overflowY: "hidden" }}>
+              <HeatmapPanel />
+            </div>
+            <div style={{ ...CARD, overflowY: "auto" }}>
+              <ThreatIntelPanel />
+            </div>
           </div>
+
+          {/* Row 4: Baseline + Integrity Chain */}
+          <div style={ROW_GRID("1fr 1fr", 160)}>
+            <div style={CARD}>
+              <BaselinePanel />
+            </div>
+            <div style={CARD}>
+              <IntegrityChain />
+            </div>
+          </div>
+
+          {/* Row 5: Packet Feed + Compliance + Sigma Rules */}
+          <div style={ROW_GRID("5fr 4fr 3fr", 340)}>
+            <div style={{ ...CARD, display: "flex", flexDirection: "column" }}>
+              <PacketFeed />
+            </div>
+            <div style={{ ...CARD, overflowY: "auto" }}>
+              <CompliancePanel />
+            </div>
+            <div style={{ ...CARD, overflowY: "auto" }}>
+              <SigmaRules />
+            </div>
+          </div>
+
+          {/* Row 6: AI Insights */}
+          <div style={{ gridColumn: "1 / -1", ...CARD, height: "auto" }}>
+            <AIInsights latestAnomaly={latestAnomaly} />
+          </div>
+
         </div>
-
-        {/* Row 2: Protocol + Anomaly Chart + Device Radar */}
-        <div className="flex border-b border-border">
-          <div className="w-72 shrink-0 border-r border-border bg-card">
-            <ProtocolBreakdown />
-          </div>
-          <div className="flex-1 bg-card border-r border-border" style={{ minHeight: 200 }}>
-            <AnomalyChart />
-          </div>
-          <div className="w-80 shrink-0" style={{ minHeight: 200 }}>
-            <DeviceRadar />
-          </div>
-        </div>
-
-        {/* Row 3: Heatmap + Threat Intel */}
-        <div className="flex border-b border-border">
-          <div className="flex-1 border-r border-border">
-            <HeatmapPanel />
-          </div>
-          <div className="w-80 shrink-0" style={{ minHeight: 320 }}>
-            <ThreatIntelPanel />
-          </div>
-        </div>
-
-        {/* Row 4: Baseline + Integrity Chain */}
-        <div className="flex border-b border-border">
-          <div className="flex-1 border-r border-border bg-card">
-            <BaselinePanel />
-          </div>
-          <div className="w-96 shrink-0">
-            <IntegrityChain />
-          </div>
-        </div>
-
-        {/* Row 5: Packet Feed + Compliance + Sigma Rules */}
-        <div className="flex border-b border-border" style={{ minHeight: 420 }}>
-          <div className="flex-1 border-r border-border bg-card flex flex-col min-w-0">
-            <PacketFeed />
-          </div>
-          <div className="w-80 shrink-0 border-r border-border bg-card">
-            <CompliancePanel />
-          </div>
-          <div className="w-72 shrink-0">
-            <SigmaRules />
-          </div>
-        </div>
-
-        {/* Row 6: AI Insights */}
-        <AIInsights latestAnomaly={latestAnomaly} />
-
       </div>
 
       {/* Fixed: Attack Simulator */}

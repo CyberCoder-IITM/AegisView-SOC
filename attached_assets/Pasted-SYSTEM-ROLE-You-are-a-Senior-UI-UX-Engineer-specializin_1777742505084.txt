@@ -1,0 +1,511 @@
+SYSTEM ROLE: You are a Senior UI/UX Engineer specializing in 
+enterprise security dashboards. AegisView is fully built and 
+running. This is a VISUAL POLISH PASS ONLY. Do not touch any 
+backend files. Do not change any logic, routes, or data. 
+Only fix layout, alignment, spacing, and visual consistency.
+No new features. Surgical CSS and JSX fixes only.
+
+═══════════════════════════════════════════════════════════════
+GLOBAL DESIGN SYSTEM — ENFORCE EVERYWHERE
+═══════════════════════════════════════════════════════════════
+
+Establish these CSS variables in index.css as the single 
+source of truth for the entire dashboard:
+
+:root {
+  /* Backgrounds */
+  --bg-primary:     #0a0e1a;
+  --bg-secondary:   #0d1117;
+  --bg-card:        #111827;
+  --bg-card-hover:  #1a2235;
+  --bg-border:      #1e2d40;
+
+  /* Brand Colors */
+  --cyan:           #00d4ff;
+  --green:          #00ff88;
+  --yellow:         #ffd700;
+  --orange:         #ff6b35;
+  --red:            #ff0033;
+  --purple:         #7b2fff;
+  --grey:           #4a5568;
+
+  /* Text */
+  --text-primary:   #e2e8f0;
+  --text-secondary: #8892a4;
+  --text-muted:     #4a5568;
+
+  /* Spacing — use ONLY these values everywhere */
+  --space-xs:   4px;
+  --space-sm:   8px;
+  --space-md:   16px;
+  --space-lg:   24px;
+  --space-xl:   32px;
+
+  /* Border radius */
+  --radius-sm:  4px;
+  --radius-md:  8px;
+  --radius-lg:  12px;
+
+  /* Card style — apply to EVERY panel */
+  --card-border: 1px solid var(--bg-border);
+  --card-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+═══════════════════════════════════════════════════════════════
+FIX 1 — GLOBAL LAYOUT GRID
+═══════════════════════════════════════════════════════════════
+
+In App.jsx and index.css:
+
+The root dashboard container:
+  display: grid
+  grid-template-columns: repeat(12, 1fr)
+  gap: var(--space-md)
+  padding: var(--space-md)
+  min-height: 100vh
+  background: var(--bg-primary)
+  box-sizing: border-box
+
+Every single panel/card component must have:
+  background: var(--bg-card)
+  border: var(--card-border)
+  border-radius: var(--radius-lg)
+  box-shadow: var(--card-shadow)
+  padding: var(--space-md)
+  box-sizing: border-box
+  overflow: hidden
+  width: 100%
+  height: 100%
+
+No panel should ever overflow its grid column.
+No panel should have inconsistent padding.
+Every panel header must be:
+  font-size: 0.7rem
+  font-weight: 700
+  letter-spacing: 0.12em
+  text-transform: uppercase
+  color: var(--text-secondary)
+  padding-bottom: var(--space-sm)
+  border-bottom: 1px solid var(--bg-border)
+  margin-bottom: var(--space-md)
+  display: flex
+  align-items: center
+  justify-content: space-between
+
+═══════════════════════════════════════════════════════════════
+FIX 2 — HEADER BAR
+═══════════════════════════════════════════════════════════════
+
+Header must be:
+  height: 56px exactly
+  display: flex
+  align-items: center
+  justify-content: space-between
+  padding: 0 var(--space-lg)
+  background: var(--bg-secondary)
+  border-bottom: 1px solid var(--bg-border)
+  position: sticky
+  top: 0
+  z-index: 1000
+  width: 100%
+  box-sizing: border-box
+
+Left section: logo + version badge — flex row, gap 8px
+  Logo: font-size 1.1rem, font-weight 800, color white
+  Version badge: tiny pill, bg #1e2d40, color var(--cyan),
+                 font-size 0.65rem, padding 2px 8px, 
+                 border-radius 999px
+
+Center section: baseline status pill
+  Centered absolutely in the header
+
+Right section: all status indicators in a flex row
+  gap: var(--space-md)
+  align-items: center
+  Each pill: padding 4px 12px, border-radius 999px,
+             font-size 0.7rem, font-weight 700
+
+═══════════════════════════════════════════════════════════════
+FIX 3 — STAT CARDS ROW
+═══════════════════════════════════════════════════════════════
+
+The 4 stat cards (PKT/s, THREATS, UPTIME, RISK SCORE):
+  Display as a single row spanning full width
+  grid-column: 1 / -1
+  display: grid
+  grid-template-columns: repeat(4, 1fr)
+  gap: var(--space-md)
+
+Each stat card:
+  background: var(--bg-card)
+  border: var(--card-border)
+  border-radius: var(--radius-lg)
+  padding: var(--space-md) var(--space-lg)
+  display: flex
+  flex-direction: column
+  align-items: flex-start
+  justify-content: center
+  min-height: 80px
+  position: relative
+  overflow: hidden
+
+  Left accent bar (::before pseudo element):
+    position: absolute, left 0, top 0, bottom 0
+    width: 3px
+    background: the card's theme color
+
+  Value: font-size 1.8rem, font-weight: 800, 
+         color: card theme color, line-height: 1
+  Label: font-size 0.65rem, color: var(--text-muted),
+         text-transform: uppercase, letter-spacing: 0.1em,
+         margin-top: var(--space-xs)
+
+═══════════════════════════════════════════════════════════════
+FIX 4 — MITRE KILL CHAIN
+═══════════════════════════════════════════════════════════════
+
+MitreKillChain.jsx:
+  grid-column: 1 / -1
+  height: 100px exactly
+  
+  Inner container:
+    display: flex
+    align-items: center
+    justify-content: space-between
+    height: 100%
+    padding: 0 var(--space-lg)
+
+  Each hexagon node:
+    width: 72px, height: 72px exactly
+    All nodes identical size — no exceptions
+    flex-shrink: 0
+
+  Connector lines between nodes:
+    flex: 1
+    height: 2px
+    margin: 0 var(--space-sm)
+    align-self: center
+
+  Stage labels:
+    font-size: 0.6rem
+    text-align: center
+    margin-top: var(--space-xs)
+    white-space: nowrap
+
+═══════════════════════════════════════════════════════════════
+FIX 5 — MAIN ROW (Gauge + Globe + Agent)
+═══════════════════════════════════════════════════════════════
+
+Row containing ThreatLevelGauge, GlobeMap, SOCAgentPanel:
+  grid-column: 1 / -1
+  display: grid
+  grid-template-columns: 2fr 5fr 3fr
+  gap: var(--space-md)
+  height: 320px
+
+ThreatLevelGauge:
+  display: flex
+  flex-direction: column
+  align-items: center
+  justify-content: center
+  SVG gauge: max-width: 160px, margin: 0 auto
+  Score number: font-size: 2.5rem, font-weight: 900
+  Label: font-size: 0.75rem, margin-top: var(--space-sm)
+
+GlobeMap:
+  overflow: hidden
+  border-radius: var(--radius-lg)
+  canvas or globe container: width 100%, height 100%
+
+SOCAgentPanel:
+  overflow-y: auto
+  display: flex
+  flex-direction: column
+  gap: var(--space-sm)
+
+═══════════════════════════════════════════════════════════════
+FIX 6 — SECOND ROW (Protocol + Chart + Devices)
+═══════════════════════════════════════════════════════════════
+
+grid-column: 1 / -1
+display: grid
+grid-template-columns: 2fr 5fr 3fr
+gap: var(--space-md)
+height: 260px
+
+ProtocolBreakdown:
+  display: flex
+  flex-direction: column
+  align-items: center
+  PieChart container: max-width: 180px, margin: 0 auto
+  Legend: width 100%, margin-top: var(--space-sm)
+  Legend items: display flex, justify-content space-between
+                font-size: 0.7rem
+
+AnomalyChart:
+  width: 100%, height: calc(100% - 32px)
+  Recharts ResponsiveContainer: width="100%" height="100%"
+
+DeviceRadar:
+  overflow-y: auto
+
+═══════════════════════════════════════════════════════════════
+FIX 7 — HEATMAP + THREAT INTEL ROW
+═══════════════════════════════════════════════════════════════
+
+grid-column: 1 / -1
+display: grid
+grid-template-columns: 7fr 5fr
+gap: var(--space-md)
+height: 220px
+
+HeatmapPanel:
+  overflow-x: auto
+  overflow-y: hidden
+  SVG container: height: calc(100% - 32px)
+
+ThreatIntelPanel:
+  overflow-y: auto
+  display: flex
+  flex-direction: column
+  gap: var(--space-sm)
+
+═══════════════════════════════════════════════════════════════
+FIX 8 — BASELINE + INTEGRITY ROW
+═══════════════════════════════════════════════════════════════
+
+grid-column: 1 / -1
+display: grid
+grid-template-columns: 1fr 1fr
+gap: var(--space-md)
+height: 140px
+
+Both panels:
+  display: flex
+  flex-direction: column
+  justify-content: center
+
+Progress bar in BaselinePanel:
+  height: 6px
+  border-radius: 999px
+  background: var(--bg-border)
+  Inner fill: background var(--cyan), border-radius 999px
+  transition: width 0.5s ease
+
+Chain blocks in IntegrityChain:
+  display: flex
+  align-items: center
+  gap: var(--space-xs)
+  overflow-x: auto
+  padding-bottom: var(--space-xs)
+  Each block: flex-shrink: 0
+
+═══════════════════════════════════════════════════════════════
+FIX 9 — PACKET FEED + COMPLIANCE + SIGMA ROW
+═══════════════════════════════════════════════════════════════
+
+grid-column: 1 / -1
+display: grid
+grid-template-columns: 5fr 4fr 3fr
+gap: var(--space-md)
+height: 300px
+
+PacketFeed:
+  display: flex
+  flex-direction: column
+  
+  Table header row:
+    display: grid
+    grid-template-columns: 
+      80px 160px 160px 60px 70px 60px 80px 80px
+    font-size: 0.65rem
+    color: var(--text-muted)
+    text-transform: uppercase
+    letter-spacing: 0.08em
+    padding: var(--space-xs) var(--space-sm)
+    border-bottom: 1px solid var(--bg-border)
+  
+  Each packet row: same grid-template-columns as header
+    padding: 6px var(--space-sm)
+    font-size: 0.72rem
+    font-family: 'JetBrains Mono', 'Courier New', monospace
+    align-items: center
+    border-bottom: 1px solid rgba(30, 45, 64, 0.5)
+  
+  Column widths MUST match between header and rows exactly.
+  react-window list: flex: 1, overflow hidden on outer,
+                     overflow auto handled by react-window
+
+CompliancePanel:
+  overflow-y: auto
+  Each rule card:
+    padding: var(--space-sm) var(--space-md)
+    border-radius: var(--radius-md)
+    border: 1px solid var(--bg-border)
+    margin-bottom: var(--space-sm)
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: var(--space-sm)
+
+SigmaRules:
+  overflow-y: auto
+  Each rule: compact card, padding var(--space-sm)
+
+═══════════════════════════════════════════════════════════════
+FIX 10 — AI INSIGHTS ROW
+═══════════════════════════════════════════════════════════════
+
+grid-column: 1 / -1
+height: 180px
+
+AIInsights inner container:
+  display: flex
+  flex-direction: column
+  gap: var(--space-sm)
+  overflow-y: auto
+  height: calc(100% - 32px)
+
+Each narrative card:
+  background: #001a00
+  border: 1px solid rgba(0, 255, 136, 0.2)
+  border-radius: var(--radius-md)
+  padding: var(--space-sm) var(--space-md)
+  flex-shrink: 0
+
+  Header row: display flex, justify-content space-between
+    align-items center
+  Badges row: display flex, gap var(--space-xs),
+              margin-top var(--space-xs)
+  Text: font-size 0.8rem, line-height 1.6,
+        color var(--green), font-family monospace
+
+═══════════════════════════════════════════════════════════════
+FIX 11 — BADGES AND PILLS (GLOBAL)
+═══════════════════════════════════════════════════════════════
+
+Every badge/pill in the entire app must follow this standard:
+
+Severity badges:
+  display: inline-flex
+  align-items: center
+  padding: 2px 8px
+  border-radius: var(--radius-sm)
+  font-size: 0.65rem
+  font-weight: 700
+  letter-spacing: 0.08em
+  text-transform: uppercase
+  white-space: nowrap
+  flex-shrink: 0
+
+Colors:
+  OK/CLEAN:   bg #0a2a1a, color var(--green), 
+              border 1px solid rgba(0,255,136,0.3)
+  WARN/MED:   bg #2a2000, color var(--yellow),
+              border 1px solid rgba(255,215,0,0.3)
+  HIGH:       bg #2a1500, color var(--orange),
+              border 1px solid rgba(255,107,53,0.3)
+  CRIT/FAIL:  bg #2a0010, color var(--red),
+              border 1px solid rgba(255,0,51,0.3)
+  TOR:        bg #1a0000, color #ff4444,
+              border 1px solid rgba(255,68,68,0.4)
+
+Protocol colors (text only, no background):
+  TCP:  color var(--cyan)
+  UDP:  color var(--purple)
+  ICMP: color var(--orange)
+  OTHER: color var(--grey)
+
+═══════════════════════════════════════════════════════════════
+FIX 12 — SCROLLBARS (GLOBAL)
+═══════════════════════════════════════════════════════════════
+
+Add to index.css:
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--bg-border) transparent;
+  }
+  
+  *::-webkit-scrollbar { width: 4px; height: 4px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { 
+    background: var(--bg-border); 
+    border-radius: 999px; 
+  }
+  *::-webkit-scrollbar-thumb:hover { 
+    background: var(--grey); 
+  }
+
+═══════════════════════════════════════════════════════════════
+FIX 13 — SIMULATOR PANEL (FIXED POSITION)
+═══════════════════════════════════════════════════════════════
+
+SimulatorPanel fixed positioning:
+  position: fixed
+  bottom: var(--space-lg)
+  right: var(--space-lg)
+  z-index: 9999
+  width: 280px
+
+Toggle button:
+  width: 100%
+  padding: var(--space-sm) var(--space-md)
+  border-radius: var(--radius-md)
+  font-size: 0.75rem
+  font-weight: 700
+  cursor: pointer
+
+Expanded panel slides up:
+  transform-origin: bottom right
+  animation: slide-up 0.2s ease
+
+Attack buttons: 
+  width: 100%
+  text-align: left
+  padding: var(--space-sm) var(--space-md)
+  border-radius: var(--radius-sm)
+  font-size: 0.75rem
+  margin-bottom: var(--space-xs)
+  display: flex
+  align-items: center
+  gap: var(--space-sm)
+
+═══════════════════════════════════════════════════════════════
+FINAL RULES — ENFORCE WITHOUT EXCEPTION
+═══════════════════════════════════════════════════════════════
+
+1. Every panel must have identical border-radius (--radius-lg)
+2. Every panel must have identical padding (--space-md)
+3. No hardcoded pixel colors anywhere — use CSS variables only
+4. No hardcoded spacing numbers — use CSS variables only
+5. All text must be readable — minimum contrast 4.5:1
+6. No horizontal scrollbar on the main page ever
+7. No content clipping — if content overflows, 
+   it scrolls INSIDE its panel, never outside
+8. All recharts components must use 
+   ResponsiveContainer width="100%" height="100%"
+9. Monospace font for: packet data, hashes, IPs, timestamps
+   Sans-serif for: labels, headers, descriptions
+10. Mobile is NOT required — optimize for 1920×1080 minimum
+
+═══════════════════════════════════════════════════════════════
+EXECUTE. Modify only these files in order:
+1. src/index.css (CSS variables + global styles + scrollbars)
+2. src/App.jsx (grid layout rows)
+3. src/components/ThreatLevelGauge.jsx (centering fix)
+4. src/components/ProtocolBreakdown.jsx (legend alignment)
+5. src/components/AnomalyChart.jsx (ResponsiveContainer fix)
+6. src/components/PacketFeed.jsx (column alignment fix)
+7. src/components/MitreKillChain.jsx (node sizing fix)
+8. src/components/HeatmapPanel.jsx (overflow fix)
+9. src/components/CompliancePanel.jsx (card alignment)
+10. src/components/AIInsights.jsx (card consistency)
+11. src/components/SimulatorPanel.jsx (fixed position fix)
+
+Confirm each file with ✓. 
+Do not add any new features.
+Do not touch any backend files.
+Do not change any data logic.
+Visual fixes only.
+═══════════════════════════════════════════════════════════════
