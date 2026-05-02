@@ -3,7 +3,7 @@ import {
   ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Dot,
 } from "recharts";
-import { useGetAnomalyTimeline } from "@workspace/api-client-react";
+import { useGetAnomalyTimeline, getGetAnomalyTimelineQueryKey } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface ForecastPoint { step: number; timestamp: string; value: number; upper: number; lower: number }
@@ -38,7 +38,7 @@ const TREND_ICONS: Record<string, string> = { RISING: "↗", FALLING: "↘", STA
 const TREND_COLORS: Record<string, string> = { RISING: "#ff6b35", FALLING: "#00ff88", STABLE: "#00d4ff" };
 
 export function AnomalyChart() {
-  const { data, isLoading } = useGetAnomalyTimeline({ query: { refetchInterval: 2000 } });
+  const { data, isLoading } = useGetAnomalyTimeline({ query: { queryKey: getGetAnomalyTimelineQueryKey(), refetchInterval: 2000 } });
   const [forecastData, setForecastData] = useState<Forecast | null>(null);
   const BASE = (import.meta as { env: Record<string, string> }).env.BASE_URL?.replace(/\/$/, "") ?? "";
 

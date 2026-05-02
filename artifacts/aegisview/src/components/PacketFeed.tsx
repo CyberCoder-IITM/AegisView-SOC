@@ -1,12 +1,12 @@
 import React, { useRef, useEffect } from "react";
-import { useGetPackets } from "@workspace/api-client-react";
+import { useGetPackets, getGetPacketsQueryKey } from "@workspace/api-client-react";
 import { enrichIp } from "@/lib/threatIntel";
 
 const COL = "80px 130px 130px 52px 52px 58px 90px 70px";
 
 export function PacketFeed() {
   const { data: packets } = useGetPackets({
-    query: { refetchInterval: 1000 },
+    query: { queryKey: getGetPacketsQueryKey(), refetchInterval: 1000 },
   });
   const listRef = useRef<HTMLDivElement>(null);
 

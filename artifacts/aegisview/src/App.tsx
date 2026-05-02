@@ -13,7 +13,7 @@ function Router() {
       <Route path="/incident/:id">
         {(params: Record<string, string>) => <Home incidentId={params.id} />}
       </Route>
-      <Route path="/" component={Home} />
+      <Route path="/">{() => <Home />}</Route>
       <Route component={NotFound} />
     </Switch>
   );

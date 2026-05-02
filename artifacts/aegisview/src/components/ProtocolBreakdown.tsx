@@ -1,6 +1,6 @@
 import React from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import { useGetProtocolBreakdown } from "@workspace/api-client-react";
+import { useGetProtocolBreakdown, getGetProtocolBreakdownQueryKey } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const PROTO_COLORS: Record<string, string> = {
@@ -19,7 +19,7 @@ const PROTO_HEX: Record<string, string> = {
 
 export function ProtocolBreakdown() {
   const { data, isLoading } = useGetProtocolBreakdown({
-    query: { refetchInterval: 3000 },
+    query: { queryKey: getGetProtocolBreakdownQueryKey(), refetchInterval: 3000 },
   });
 
   if (isLoading && !data) {

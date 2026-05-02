@@ -95,7 +95,7 @@ async function runCycle(): Promise<void> {
         src: t.src_ip, dst: t.dst_ip, port: t.dst_port,
         proto: t.protocol, severity: t.severity, reason: t.reason,
       })),
-      killchain: killchain.map(s => ({ tactic: s.tactic, status: s.status, confidence: s.confidence })),
+      killchain: killchain.map(s => ({ stage: s.stage, status: s.status, confidence: s.confidence })),
       packet_sample: packets.slice(0, 10).map(p => ({
         src: p.src_ip, dst: p.dst_ip, port: p.dst_port,
         proto: p.protocol, flags: p.flags, size: p.length, anomaly: p.is_anomaly,

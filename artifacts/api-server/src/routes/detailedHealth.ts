@@ -17,8 +17,12 @@ router.get("/health/detailed", (_req, res) => {
   const baseline = getBaselineStatus();
   const agentStatus = getAgentStatus();
 
-  const lastPacket = packets[packets.length - 1];
-  const lastPacketAge = lastPacket ? now - new Date(lastPacket.timestamp).getTime() : 99999;
+  // Find the most-recently timestamped packet (buffer order is not guaranteed newest-last)
+  const mostRecentPacketTs = packets.reduce((max, p) => {
+    const t = new Date(p.timestamp).getTime();
+    return t > max ? t : max;
+  }, 0);
+  const lastPacketAge = mostRecentPacketTs > 0 ? now - mostRecentPacketTs : 99999;
 
   const agentLastRunAge = agentStatus.last_run
     ? Math.floor((now - new Date(agentStatus.last_run).getTime()) / 1000)
@@ -68,10 +72,10 @@ router.get("/health/detailed", (_req, res) => {
       metric: agentStatus.cycle_count > 0 ? `last cycle ${agentLastRunAge}s ago` : "No cycles yet",
       last_cycle_age_s: agentLastRunAge,
     },
-  ] as const;
+  ];
 
-  const errorCount = (components as { status: string }[]).filter(c => c.status === "ERROR").length;
-  const warnCount = (components as { status: string }[]).filter(c => c.status === "WARN").length;
+  const errorCount = components.filter(c => c.status === "ERROR").length;
+  const warnCount = components.filter(c => c.status === "WARN").length;
   const overallStatus = errorCount > 0 ? "CRITICAL" : warnCount > 0 ? "DEGRADED" : "HEALTHY";
 
   res.json({

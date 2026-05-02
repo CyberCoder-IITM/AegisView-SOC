@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { useGetThreatLevel } from "@workspace/api-client-react";
+import { useGetThreatLevel, getGetThreatLevelQueryKey } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function ThreatLevelGauge() {
   const { data: threatData, isLoading } = useGetThreatLevel({
-    query: { refetchInterval: 3000 },
+    query: { queryKey: getGetThreatLevelQueryKey(), refetchInterval: 3000 },
   });
 
   const [score, setScore] = useState(0);

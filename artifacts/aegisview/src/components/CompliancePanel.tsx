@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useGetComplianceReport } from "@workspace/api-client-react";
+import { useGetComplianceReport, getGetComplianceReportQueryKey } from "@workspace/api-client-react";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function CompliancePanel() {
   const { data, isLoading } = useGetComplianceReport({
-    query: { refetchInterval: 5000 },
+    query: { queryKey: getGetComplianceReportQueryKey(), refetchInterval: 5000 },
   });
   const [downloadingReport, setDownloadingReport] = useState(false);
 

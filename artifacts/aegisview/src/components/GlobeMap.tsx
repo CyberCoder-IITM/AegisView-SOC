@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
-import { useGetGeoThreats } from "@workspace/api-client-react";
+import { useGetGeoThreats, getGetGeoThreatsQueryKey } from "@workspace/api-client-react";
 
 interface GeoThreat {
   ip: string;
@@ -193,7 +193,7 @@ export default function GlobeMap() {
   const [arcProgress, setArcProgress] = useState(0);
 
   const { data: geoThreats } = useGetGeoThreats({
-    query: { refetchInterval: 5000 },
+    query: { queryKey: getGetGeoThreatsQueryKey(), refetchInterval: 5000 },
   });
 
   useEffect(() => {
