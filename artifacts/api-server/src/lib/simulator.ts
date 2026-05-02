@@ -276,6 +276,12 @@ function seedInitialPackets(): void {
 
 seedInitialPackets();
 
+// Packet hooks for fingerprinter, integrity chain, etc.
+const packetHooks: Array<(p: PacketRecord) => void> = [];
+export function registerPacketHook(fn: (p: PacketRecord) => void): void {
+  packetHooks.push(fn);
+}
+
 // Continuous simulation loop
 let burstMode = false;
 let burstCount = 0;
@@ -294,6 +300,7 @@ function simulationTick(): void {
     const packet = generatePacket(forceAnomaly);
     packets.push(packet);
     if (packets.length > MAX_PACKETS) packets.shift();
+    packetHooks.forEach(fn => { try { fn(packet); } catch { /* ignore */ } });
   }
 
   updateAnomalyTimeline();

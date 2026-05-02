@@ -1,0 +1,692 @@
+SYSTEM ROLE: You are a Principal Security Engineer who has worked at 
+NSA, Google Project Zero, and Palantir. AegisView Phases 1 and 2 are 
+complete and running. You are now implementing Phase 3 — the features 
+that make this indistinguishable from a $2M enterprise security platform.
+Zero placeholders. Zero TODOs. Every file complete. Confirm each with ✓.
+
+═══════════════════════════════════════════════════════════════════════════
+FEATURE 1 — AUTONOMOUS AI SOC AGENT (The Crown Jewel)
+═══════════════════════════════════════════════════════════════════════════
+
+This is not a chatbot. This is an autonomous agent that WATCHES the 
+dashboard, REASONS about threats, and ACTS without being asked.
+
+Create backend/analysis/soc_agent.py:
+
+  Class AutonomousSOCAgent:
+    Runs as a continuous asyncio background task every 10 seconds
+    
+    PERCEPTION: Reads current state every cycle:
+      - Last 100 packets from deque
+      - Current anomaly list
+      - MITRE kill chain stage statuses
+      - Baseline deviation metrics
+      - Compliance flags
+      - Threat level score
+    
+    REASONING: Multi-step analysis chain sent to Gemini:
+      Step 1 — Pattern Recognition:
+        "Given these packets and anomalies, identify the single 
+         most significant threat pattern. Is this opportunistic 
+         noise or targeted attack? Confidence 0-100."
+      
+      Step 2 — Attack Attribution:
+        "Based on the TTPs observed, which threat actor group 
+         does this most resemble? Options: APT28, Lazarus Group,
+         Carbanak, FIN7, REvil, Unknown Opportunistic. 
+         Give reasoning in one sentence."
+      
+      Step 3 — Predictive Next Step:
+        "If this is a real attack, what is the attacker's 
+         NEXT most likely action in the next 5 minutes? 
+         Be specific about which port/protocol/technique."
+      
+      Step 4 — Autonomous Decision:
+        "Generate ONE specific actionable response:
+         either a firewall rule, a SIEM alert query, 
+         or an isolation recommendation. Be exact."
+    
+    OUTPUT: AgentCycle(
+      cycle_id: uuid,
+      timestamp: ISO8601,
+      threat_pattern: str,
+      attribution: str,
+      attribution_confidence: int,
+      predicted_next_action: str,
+      autonomous_recommendation: str,
+      recommendation_type: "FIREWALL"|"SIEM"|"ISOLATE"|"MONITOR",
+      severity: "INFO"|"LOW"|"MED"|"HIGH"|"CRITICAL"
+    )
+    
+    Store last 20 AgentCycle results in memory
+    Route: GET /api/agent/cycles → last 20 cycles
+    Route: GET /api/agent/latest → most recent cycle only
+    Route: GET /api/agent/status → { running: bool, cycle_count: int,
+                                      last_run: ISO8601 }
+
+Create frontend/src/components/SOCAgentPanel.jsx:
+  
+  Full-width panel with dark green terminal aesthetic #001a00
+  Header: "🤖 AUTONOMOUS SOC AGENT" | status pill: 
+    "● ANALYZING" (pulsing green) or "● STANDBY" (grey)
+  
+  Main display — split into 4 quadrants:
+  
+  TOP LEFT — "THREAT PATTERN":
+    Large text display of current threat_pattern
+    Updates with typewriter effect on each new cycle
+    Subtle scan-line CSS animation overlay
+  
+  TOP RIGHT — "ATTRIBUTION":
+    Threat actor name in large bold red text
+    Confidence meter: horizontal bar 0-100%
+    Known actor profiles hardcoded as tooltips:
+      APT28: "Russian GRU Unit 26165, Fancy Bear"
+      Lazarus: "North Korean RGB, financial targeting"
+      Carbanak: "Eastern European, banking sector"
+      FIN7: "Financially motivated, POS systems"
+      REvil: "Russian ransomware-as-a-service"
+    Attribution confidence shown as: "APT28 — 73% confidence"
+  
+  BOTTOM LEFT — "PREDICTED NEXT MOVE":
+    Yellow warning text
+    Countdown timer: "Predicted in: 4:32" counting down 
+    from 5 minutes, resets on each new cycle
+    Icon changes based on prediction type:
+      Port-based: 🔌  |  Lateral: 🔀  |  Exfil: 📤  |  C2: 📡
+  
+  BOTTOM RIGHT — "AUTONOMOUS ACTION":
+    The agent's recommendation rendered as actual code:
+    If FIREWALL type:
+      Syntax-highlighted iptables command in code block
+      "📋 Copy Rule" button
+      "⚡ Simulate Deploy" button (adds to a deployed rules log)
+    If SIEM type:
+      Splunk SPL query or Elastic KQL in code block
+      "📋 Copy Query" button  
+    If ISOLATE type:
+      Red alert box with IP to isolate + reason
+    
+  Bottom bar: cycle history timeline
+    Last 20 cycles as colored dots (severity color)
+    Hover shows mini summary tooltip
+    Click dot: expand that cycle's full details
+
+═══════════════════════════════════════════════════════════════════════════
+FEATURE 2 — NETWORK DNA FINGERPRINTING
+═══════════════════════════════════════════════════════════════════════════
+
+Every device on a network has a unique "fingerprint" based on how 
+it sends packets. This feature builds behavioral profiles per IP 
+that persist and detect when behavior changes — exactly what 
+Darktrace's "Enterprise Immune System" does.
+
+Create backend/analysis/fingerprinter.py:
+
+  Class DeviceFingerprinter:
+    Maintains fingerprint profile per unique src_ip:
+    
+    DeviceProfile(
+      ip: str,
+      first_seen: ISO8601,
+      last_seen: ISO8601,
+      packet_count: int,
+      
+      # Behavioral DNA
+      typical_ports: Counter,      (ports this IP normally uses)
+      typical_protocols: Counter,  (protocol distribution)
+      avg_packet_size: float,
+      packet_size_std: float,
+      avg_ttl: float,
+      typical_dst_ips: set,        (IPs this device normally talks to)
+      typical_hours: Counter,      (hours of day device is active)
+      
+      # Anomaly tracking
+      behavior_change_score: float, (0-1, how much behavior changed)
+      is_new_device: bool,
+      anomalous_behaviors: list[str],
+      device_type_guess: str        (see below)
+    )
+    
+    device_type_guess logic:
+      TTL=64 + Linux ports → "Linux Server"
+      TTL=128 + Windows ports → "Windows Workstation"  
+      TTL=255 + routing ports → "Network Device/Router"
+      Only ICMP traffic → "Monitoring/Ping Tool"
+      High UDP + port 5353 → "IoT Device"
+      Port 443/80 high volume → "Web Server"
+    
+    behavior_change_score:
+      Compare last 60s profile vs historical profile
+      Score = weighted deviation across all metrics
+      If score > 0.7: flag as "BEHAVIOR ANOMALY"
+      This catches: compromised devices, lateral movement,
+      new malware installed on known device
+    
+    Routes:
+      GET /api/devices → all DeviceProfiles sorted by 
+                         behavior_change_score descending
+      GET /api/devices/{ip} → single device full profile
+      GET /api/devices/{ip}/timeline → packet history for IP
+
+Create frontend/src/components/DeviceRadar.jsx:
+
+  Radar/Spider chart per device using SVG (no extra library)
+  
+  "NETWORK DEVICE INTELLIGENCE" panel
+  
+  Left side — Device list:
+    Scrollable list of all seen IPs
+    Each row: IP | Device Type icon | Packet count | 
+              Behavior score bar | NEW/KNOWN/ANOMALOUS badge
+    Color coding:
+      Green: known, normal behavior (score < 0.3)
+      Yellow: behavior shifting (score 0.3-0.7)  
+      Red: significant behavior change (score > 0.7)
+      Purple: NEW device seen for first time
+    
+  Right side — Selected device detail:
+    Click any IP → shows full profile
+    
+    Spider/Radar SVG chart with 6 axes:
+      Packet Volume | Protocol Diversity | Port Range |
+      Geographic Spread | Temporal Pattern | Size Variance
+    Two overlaid shapes:
+      Blue filled: historical baseline
+      Red outline: current behavior
+    Gap between shapes = behavior change score visualized
+    
+    Below chart:
+      Device type badge with icon
+      First seen / Last seen
+      "Anomalous Behaviors" list (if any)
+      All historical dst_ips as clickable pills
+      
+  Auto-highlights: if behavior_change_score > 0.7 on any device,
+  flash the DeviceRadar panel header red + add entry to 
+  AI agent's next analysis cycle context
+
+═══════════════════════════════════════════════════════════════════════════
+FEATURE 3 — CRYPTOGRAPHIC PACKET INTEGRITY CHAIN
+═══════════════════════════════════════════════════════════════════════════
+
+This is what makes AegisView "court-admissible forensics ready."
+Every packet gets a SHA-256 hash, and each hash includes the 
+previous hash — creating a blockchain-style tamper-evident chain.
+If anyone modifies captured data, the chain breaks.
+
+Create backend/analysis/integrity_chain.py:
+
+  Class PacketIntegrityChain:
+    genesis_hash = sha256("AEGISVIEW_GENESIS_BLOCK").hexdigest()
+    chain: list[ChainEntry] = []
+    
+    ChainEntry(
+      index: int,
+      timestamp: ISO8601,
+      packet_hash: str,      (sha256 of packet dict as JSON)
+      previous_hash: str,
+      chain_hash: str,       (sha256 of packet_hash + previous_hash)
+      is_valid: bool
+    )
+    
+    Method: add_packet(packet_dict) -> ChainEntry
+      packet_hash = sha256(json.dumps(packet_dict, sort_keys=True))
+      previous_hash = chain[-1].chain_hash if chain else genesis_hash
+      chain_hash = sha256(packet_hash + previous_hash)
+      Append ChainEntry, return it
+    
+    Method: verify_chain() -> ChainVerification
+      Walk entire chain, recompute all hashes
+      Return: ChainVerification(
+        total_entries: int,
+        valid_entries: int,
+        tampered_indices: list[int],
+        integrity_status: "INTACT"|"COMPROMISED",
+        verification_timestamp: ISO8601
+      )
+    
+    Keep only last 1000 entries in chain (deque)
+    
+    Routes:
+      GET /api/chain/status → chain length, integrity_status, 
+                              last_verified timestamp
+      GET /api/chain/verify → run full verify_chain(), return result
+      GET /api/chain/latest → last 10 ChainEntries
+
+Create frontend/src/components/IntegrityChain.jsx:
+
+  Compact panel in bottom bar
+  
+  "⛓ FORENSIC INTEGRITY CHAIN" header
+  
+  Main display:
+    Large status indicator:
+      "✓ CHAIN INTACT" — green, with chain link icon
+      "⚠ CHAIN COMPROMISED" — red flashing
+    
+    Stats row: 
+      Entries: {n} | Valid: {n} | Last Verified: {time}
+    
+    Visual chain: last 10 entries as connected blocks
+      Each block: truncated hash (first 8 chars)
+      Connected by chain links SVG icon between blocks
+      Color: green if valid, red if tampered
+      Hover: shows full hash + timestamp
+    
+    "🔍 Verify Now" button → GET /api/chain/verify
+      Shows spinner during verification
+      Result: "✓ All {n} entries verified — Chain Intact"
+      Or: "⚠ Tampering detected at entries: 47, 203, 891"
+    
+    Small text: "SHA-256 tamper-evident chain — Court admissible"
+
+═══════════════════════════════════════════════════════════════════════════
+FEATURE 4 — PREDICTIVE THREAT FORECASTING ENGINE
+═══════════════════════════════════════════════════════════════════════════
+
+Uses time-series analysis to predict where the threat level 
+will be in the next 5 minutes. Shows a forecast line extending 
+beyond the current chart — exactly like what Recorded Future sells.
+
+Create backend/analysis/forecaster.py:
+
+  Class ThreatForecaster:
+    Maintains rolling time series of threat scores:
+      threat_history: deque(maxlen=360)  (one per 5s = 30 min)
+    
+    Method: add_datapoint(score: int, timestamp: datetime)
+    
+    Method: forecast(horizon_steps: int = 12) -> Forecast
+      (12 steps × 5s = 60 second forecast)
+      
+      Algorithm — Triple Exponential Smoothing (Holt-Winters):
+        alpha = 0.3  (level smoothing)
+        beta = 0.1   (trend smoothing)  
+        gamma = 0.1  (seasonal smoothing, period=12)
+        
+        Implement from scratch (no statsmodels needed):
+          level[0] = threat_history[0]
+          trend[0] = mean(diff of first 12 points)
+          For each t: update level, trend using EWM formulas
+          Forecast = level[-1] + (h * trend[-1])
+        
+        Add confidence intervals:
+          upper_bound = forecast + (1.96 * rolling_std)
+          lower_bound = max(0, forecast - (1.96 * rolling_std))
+        
+      Return Forecast(
+        predictions: [{step, timestamp, value, upper, lower}],
+        trend_direction: "RISING"|"FALLING"|"STABLE",
+        predicted_peak: int,
+        predicted_peak_time: ISO8601,
+        alert: str | null  
+          (e.g. "⚠ Threat level predicted to reach CRITICAL 
+           in approximately 3 minutes")
+      )
+    
+    Route: GET /api/forecast → current Forecast object
+    Updates every 5 seconds as new threat scores come in
+
+Update frontend/src/components/AnomalyChart.jsx:
+  
+  Extend existing chart with forecast visualization:
+  
+  Chart now has two regions separated by a vertical "NOW" line:
+  
+  LEFT of NOW line (historical):
+    Existing z-score line (cyan)
+    Existing ML score line (purple)
+  
+  RIGHT of NOW line (forecast — next 60 seconds):
+    Dashed orange line: predicted threat score
+    Shaded confidence interval band: 
+      rgba(255, 107, 53, 0.15) between upper and lower bounds
+    Label: "FORECAST" in orange italic text
+  
+  If trend_direction is RISING:
+    Arrow icon pointing up-right in orange
+    If predicted_peak > 85: 
+      Red banner above chart: 
+      "⚠ CRITICAL THRESHOLD BREACH PREDICTED — {time}"
+  
+  Forecast data: poll /api/forecast every 5 seconds
+  Add to Zustand store: forecastData: {}
+
+═══════════════════════════════════════════════════════════════════════════
+FEATURE 5 — DARK WEB CORRELATION ENGINE
+═══════════════════════════════════════════════════════════════════════════
+
+Cross-reference detected IPs and ports against known dark web 
+marketplace activity patterns. Uses public threat intel feeds 
+(no dark web access needed — uses OSINT APIs).
+
+Create backend/geo/darkweb_correlator.py:
+
+  On startup, fetch and cache these FREE public threat intel feeds:
+  
+  Feed 1 — Emerging Threats (Proofpoint):
+    https://rules.emergingthreats.net/blockrules/compromised-ips.txt
+    Parse into set: COMPROMISED_IPS
+  
+  Feed 2 — Feodo Tracker (Abuse.ch) — C2 servers:
+    https://feodotracker.abuse.ch/downloads/ipblocklist.txt
+    Parse into set: C2_IPS (known botnet C2 servers)
+  
+  Feed 3 — URLhaus (Abuse.ch) — malware distribution:
+    https://urlhaus.abuse.ch/downloads/text/
+    Extract IPs, parse into set: MALWARE_IPS
+  
+  All fetches: 15s timeout, silent fallback to empty set
+  Refresh every 6 hours in background thread
+  
+  Function: correlate_ip(ip: str) -> DarkWebCorrelation:
+    Returns DarkWebCorrelation(
+      ip: str,
+      is_compromised: bool,
+      is_c2_server: bool,
+      is_malware_host: bool,
+      feeds_matched: list[str],
+      threat_category: "CLEAN"|"SUSPICIOUS"|"C2"|"MALWARE"|"COMPROMISED",
+      intel_source: str
+    )
+  
+  Integrate into parser.py enrichment pipeline alongside threat_intel.py
+  Add darkweb_correlation field to PacketRecord schema
+  
+  Route: GET /api/intel/darkweb/summary →
+    {
+      total_ips_checked: int,
+      compromised_hits: int,
+      c2_hits: int,
+      malware_hits: int,
+      feed_status: [{name, last_updated, ip_count}],
+      top_matched_ips: [{ip, category, packet_count}]
+    }
+
+Create frontend/src/components/ThreatIntelPanel.jsx:
+
+  "🕸 LIVE THREAT INTELLIGENCE FEEDS" panel
+  
+  Top section — Feed Status:
+    3 feed cards in a row:
+      Each: feed name | IP count | last updated | 
+            status dot (green=fresh, yellow=stale, red=failed)
+    "Feeds cover {total} known malicious IPs worldwide"
+  
+  Middle section — Hit Counter:
+    Large number: "DARKWEB CORRELATIONS: {n}"
+    Breakdown: C2 Servers: {n} | Malware Hosts: {n} | 
+               Compromised: {n}
+    Each category has icon and color
+  
+  Bottom section — Live Hit Feed:
+    Every time a packet matches a feed:
+    New entry slides in from top:
+      "⚠ {ip} matched {feed_name} — {category}"
+      Timestamp | Packet count from this IP
+    Max 10 entries shown, auto-scrolls
+    Red glow pulse on new entry
+  
+  In PacketFeed.jsx: 
+    Add colored skull icon ☠ in INTEL column for any packet
+    where darkweb_correlation.threat_category != "CLEAN"
+    These rows get highest visual priority (top of list)
+
+═══════════════════════════════════════════════════════════════════════════
+FEATURE 6 — EXECUTIVE WAR ROOM DASHBOARD (Presentation Mode)
+═══════════════════════════════════════════════════════════════════════════
+
+A completely separate full-screen view designed for when you're 
+presenting to judges or executives. Press "F" for fullscreen 
+war room mode. No tables, no raw data — pure visual impact.
+
+Create frontend/src/components/WarRoom.jsx:
+
+  Triggered by: keyboard shortcut "W" or button in header
+  Renders as: position fixed, 100vw × 100vh, z-index 99999
+  Background: #000000 pure black
+  Exit: press Escape or "W" again
+  
+  Layout — 3 rows, dramatic spacing:
+  
+  ROW 1 — TOP STRIP (15% height):
+    Left: "🛡️ AEGISVIEW" huge logo text with subtle red glow
+    Center: current time HH:MM:SS in large monospace, live
+    Right: "THREAT LEVEL: CRITICAL" in matching gauge color,
+           massive font, pulsing glow animation
+  
+  ROW 2 — MAIN STAGE (60% height):
+    Left 40%: GlobeMap at full height, auto-rotating,
+              all threat arcs animated and glowing
+    Center 20%: Giant ThreatLevelGauge SVG, fills the space
+                Score number: 8rem font size
+                Concentric pulsing rings behind gauge
+                when score > 60
+    Right 40%: SOC Agent latest cycle — attribution + 
+               recommendation in large readable text
+               Font: 1.4rem, high contrast
+  
+  ROW 3 — BOTTOM STRIP (25% height):
+    Full-width scrolling ticker (like financial news ticker):
+    Auto-scrolling left: all recent anomalies + agent cycles
+    Format: "⚠ {time} | {src_ip} → {dst_ip} | {reason} | 
+             {attribution} ░░░ "
+    Speed: 60px/second CSS animation
+    Color: alternating cyan and orange entries
+    
+    Below ticker: 5 large stat cards in a row:
+      PKT/s | THREATS | UPTIME | CHAIN STATUS | FEED HITS
+      Each: massive number, label below, no borders just space
+  
+  Visual effects for War Room:
+    Subtle scanline overlay: 
+      repeating-linear-gradient of semi-transparent lines
+    Vignette effect: radial gradient dark at edges
+    Occasional "glitch" animation on threat level number
+      when score changes: brief RGB split effect 0.1s
+
+═══════════════════════════════════════════════════════════════════════════
+FEATURE 7 — AUTOMATED SIGMA RULE GENERATOR
+═══════════════════════════════════════════════════════════════════════════
+
+Sigma is the industry standard for SIEM alert rules (used by 
+Splunk, Elastic, Microsoft Sentinel). AegisView will auto-generate 
+valid Sigma rules from detected threats. No SOC tool at this 
+price point does this automatically.
+
+Create backend/analysis/sigma_generator.py:
+
+  Function: generate_sigma_rule(anomaly: AnomalyResult, 
+                                 packets: list[PacketRecord]) -> SigmaRule:
+    
+    SigmaRule(
+      rule_id: uuid,
+      title: str,
+      status: "experimental",
+      description: str,
+      author: "AegisView AutoGen",
+      date: today,
+      tags: list[str],      (MITRE ATT&CK technique IDs)
+      logsource: dict,      (category: network, product: zeek/suricata)
+      detection: dict,      (the actual sigma detection logic)
+      falsepositives: list[str],
+      level: "low"|"medium"|"high"|"critical",
+      raw_yaml: str         (complete valid YAML)
+    )
+    
+    Rule generation logic:
+      Port scan pattern → 
+        title: "Potential Port Scan from {src_ip}"
+        detection: selection: dst_port|count > 10 within 30s
+        tags: ["attack.reconnaissance", "attack.t1046"]
+      
+      RDP external →
+        title: "RDP Access from External Network"  
+        detection: dst_port: 3389 + src_ip not in RFC1918
+        tags: ["attack.initial_access", "attack.t1133"]
+      
+      Telnet →
+        title: "Insecure Telnet Protocol Detected"
+        detection: dst_port: 23
+        tags: ["attack.defense_evasion", "attack.t1071"]
+      
+      C2 beacon pattern →
+        title: "Potential C2 Beaconing to {dst_ip}"
+        detection: connection frequency pattern
+        tags: ["attack.command_and_control", "attack.t1071.001"]
+      
+      Generate valid YAML using PyYAML
+    
+    Routes:
+      GET /api/sigma/rules → all generated rules
+      GET /api/sigma/rules/{rule_id} → single rule as YAML download
+      GET /api/sigma/export → all rules as .zip of YAML files
+
+Create frontend/src/components/SigmaRules.jsx:
+
+  "Σ SIGMA RULE GENERATOR" panel (Σ is the Sigma logo symbol)
+  
+  Header: rule count badge "12 Rules Generated"
+  
+  Rule list — each rule as a card:
+    Title | Level badge (color coded) | Generated timestamp
+    Expand → shows full YAML in syntax-highlighted code block
+    Buttons per rule:
+      "📋 Copy YAML"
+      "↗ Open in Splunk" (constructs a Splunk search URL)
+      "↗ Open in Elastic" (constructs Kibana URL)
+    
+  Bottom: 
+    "📦 Export All Rules (.zip)" → GET /api/sigma/export
+    Small text: "Compatible with: Splunk | Elastic | 
+                 Microsoft Sentinel | IBM QRadar"
+  
+  New rule notification: 
+    Toast slides in from top-right when new rule generated:
+    "Σ New Sigma Rule: {title}"
+
+═══════════════════════════════════════════════════════════════════════════
+LAYOUT INTEGRATION — UPDATE App.jsx COMPLETELY
+═══════════════════════════════════════════════════════════════════════════
+
+Final complete layout:
+
+  Header bar (60px):
+    Logo | Version | Baseline Status | Simulation Badge |
+    "⚔ WAR ROOM [W]" button | Live pill | Stats row
+
+  Row 0: MitreKillChain — full width (80px)
+  
+  Row 1: ThreatLevelGauge (col 1-3) | GlobeMap (col 4-9) | 
+         SOCAgentPanel (col 10-12)
+  
+  Row 2: ProtocolBreakdown (col 1-3) | AnomalyChart with 
+         forecast (col 4-9) | DeviceRadar (col 10-12)
+  
+  Row 3: HeatmapPanel (col 1-8) | ThreatIntelPanel (col 9-12)
+  
+  Row 4: BaselinePanel (col 1-6) | IntegrityChain (col 7-12)
+  
+  Row 5: PacketFeed (col 1-7) | CompliancePanel (col 8-10) | 
+         SigmaRules (col 11-12)
+  
+  Row 6: AIInsights (col 1-8) | SOCAgentPanel cycles (col 9-12)
+  
+  WarRoom: fixed overlay, keyboard shortcut "W"
+  SimulatorPanel: fixed bottom-right
+
+Global keyboard shortcuts (add to App.jsx useEffect):
+  "W" → toggle War Room
+  "S" → toggle Simulator Panel  
+  "R" → trigger manual agent analysis cycle
+  "C" → trigger chain verification
+  "E" → export PCAP
+  Render small keyboard shortcut legend in header
+
+═══════════════════════════════════════════════════════════════════════════
+BACKEND ADDITIONS — main.py UPDATES
+═══════════════════════════════════════════════════════════════════════════
+
+Register all new routers:
+  from api.routes_analytics import router as analytics_router
+  from api.routes_intel import router as intel_router
+  from api.routes_sigma import router as sigma_router
+  from api.routes_agent import router as agent_router
+  from api.routes_devices import router as devices_router
+  from api.routes_chain import router as chain_router
+  from api.routes_forecast import router as forecast_router
+
+Start all background tasks on startup:
+  @app.on_event("startup")
+  async def startup_event():
+    asyncio.create_task(soc_agent.run_continuous())
+    asyncio.create_task(forecaster.update_continuous())
+    asyncio.create_task(baseline_engine.run_continuous())
+    asyncio.create_task(darkweb_correlator.refresh_feeds_continuous())
+
+Add to requirements.txt:
+  pyyaml>=6.0
+  aiohttp>=3.9.0
+
+═══════════════════════════════════════════════════════════════════════════
+SCHEMAS.PY — ADD ALL NEW MODELS
+═══════════════════════════════════════════════════════════════════════════
+
+Add Pydantic v2 models:
+  AgentCycle, DeviceProfile, DeviceTimeline,
+  ChainEntry, ChainVerification, Forecast, ForecastPoint,
+  DarkWebCorrelation, ThreatIntelSummary,
+  SigmaRule, SigmaExport, LiveStats
+
+All models: use field validators, all fields typed, no Any types.
+
+═══════════════════════════════════════════════════════════════════════════
+QUALITY GATES — ALL MUST PASS
+═══════════════════════════════════════════════════════════════════════════
+
+1. SOC Agent must never block — all Gemini calls in asyncio tasks
+2. Darkweb feed fetch must have silent fallback — never crash startup
+3. Sigma YAML must be valid — test with PyYAML round-trip on generation
+4. War Room must render in under 1 second — no new data fetches, 
+   reads from existing Zustand store only
+5. IntegrityChain verify must handle empty chain gracefully
+6. DeviceRadar spider chart SVG must be fully hand-coded — no d3
+7. Forecast must return data even with < 12 history points 
+   (return flat line with wide confidence intervals)
+8. All keyboard shortcuts must show in a dismissable legend overlay
+9. GEMINI_API_KEY from os.environ — referenced in ai_narrator.py 
+   and soc_agent.py only, nowhere else
+10. Every new component added to App.jsx with correct grid position
+11. No component should cause layout shift when data arrives
+12. War Room ticker must loop seamlessly with no jump
+
+═══════════════════════════════════════════════════════════════════════════
+EXECUTE. File order:
+1. schemas.py (all new models)
+2. analysis/soc_agent.py
+3. analysis/fingerprinter.py
+4. analysis/integrity_chain.py
+5. analysis/forecaster.py
+6. analysis/sigma_generator.py
+7. geo/darkweb_correlator.py
+8. api/routes_agent.py
+9. api/routes_devices.py
+10. api/routes_chain.py
+11. api/routes_forecast.py
+12. api/routes_sigma.py
+13. api/routes_intel.py
+14. main.py (updated)
+15. requirements.txt (updated)
+16. src/components/SOCAgentPanel.jsx
+17. src/components/DeviceRadar.jsx
+18. src/components/IntegrityChain.jsx
+19. src/components/ThreatIntelPanel.jsx
+20. src/components/SigmaRules.jsx
+21. src/components/WarRoom.jsx
+22. src/store/packetStore.js (updated)
+23. src/App.jsx (final complete layout)
+24. src/index.css (all new animations)
+
+Confirm each file with ✓. Do not stop until all 24 are complete.
+═══════════════════════════════════════════════════════════════════════════

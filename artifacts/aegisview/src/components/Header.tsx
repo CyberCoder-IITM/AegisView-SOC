@@ -5,9 +5,11 @@ interface HeaderProps {
   simulationActive?: boolean;
   simulationMode?: string | null;
   baselineMode?: "LEARNING" | "ACTIVE" | null;
+  onWarRoom?: () => void;
+  onShowShortcuts?: () => void;
 }
 
-export function Header({ simulationActive, simulationMode, baselineMode }: HeaderProps) {
+export function Header({ simulationActive, simulationMode, baselineMode, onWarRoom, onShowShortcuts }: HeaderProps) {
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -54,6 +56,26 @@ export function Header({ simulationActive, simulationMode, baselineMode }: Heade
           </div>
         )}
 
+        {onWarRoom && (
+          <button
+            onClick={onWarRoom}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded border text-[10px] font-bold transition-colors hover:bg-destructive/10"
+            style={{ borderColor: "#ff003340", color: "#ff6b35" }}
+            title="War Room Mode [W]"
+          >
+            ⚔ WAR ROOM
+          </button>
+        )}
+        {onShowShortcuts && (
+          <button
+            onClick={onShowShortcuts}
+            className="text-[10px] font-mono px-1.5 py-0.5 rounded border hover:bg-white/5 transition-colors"
+            style={{ borderColor: "#333", color: "#555" }}
+            title="Keyboard shortcuts"
+          >
+            ?
+          </button>
+        )}
         <div className="text-muted-foreground text-[10px]">
           {time.toISOString().replace("T", " ").substring(0, 19)} UTC
         </div>
