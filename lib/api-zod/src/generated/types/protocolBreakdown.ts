@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
-  status: string;
+export interface ProtocolBreakdown {
+  TCP: number;
+  UDP: number;
+  ICMP: number;
+  OTHER: number;
+  total: number;
 }

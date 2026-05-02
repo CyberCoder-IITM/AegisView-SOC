@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: AegisView - Network Anomaly Detection & Compliance Dashboard API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: packets
+    description: Packet capture and streaming
+  - name: threats
+    description: Threat detection and scoring
+  - name: compliance
+    description: Compliance reporting
 paths:
   /healthz:
     get:
@@ -24,6 +30,113 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /packets:
+    get:
+      operationId: getPackets
+      tags: [packets]
+      summary: Get recent packets
+      description: Returns the last 100 captured/simulated network packets
+      responses:
+        "200":
+          description: List of recent packets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PacketRecord"
+
+  /threats:
+    get:
+      operationId: getThreats
+      tags: [threats]
+      summary: Get current anomaly threats
+      description: Returns all currently flagged anomaly results
+      responses:
+        "200":
+          description: List of anomaly results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnomalyResult"
+
+  /threat-level:
+    get:
+      operationId: getThreatLevel
+      tags: [threats]
+      summary: Get overall threat level
+      description: Returns the composite threat score and label
+      responses:
+        "200":
+          description: Current threat level
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ThreatLevel"
+
+  /compliance/report:
+    get:
+      operationId: getComplianceReport
+      tags: [compliance]
+      summary: Get compliance report
+      description: Returns full PCI-DSS / NIST compliance report
+      responses:
+        "200":
+          description: Compliance report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComplianceReport"
+
+  /geo/threats:
+    get:
+      operationId: getGeoThreats
+      tags: [threats]
+      summary: Get geo-located threat IPs
+      description: Returns threat IPs with geographic coordinates for globe visualization
+      responses:
+        "200":
+          description: List of geo-located threats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GeoThreat"
+
+  /stats/protocol-breakdown:
+    get:
+      operationId: getProtocolBreakdown
+      tags: [packets]
+      summary: Get protocol distribution
+      description: Returns packet counts broken down by protocol
+      responses:
+        "200":
+          description: Protocol breakdown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProtocolBreakdown"
+
+  /stats/anomaly-timeline:
+    get:
+      operationId: getAnomalyTimeline
+      tags: [threats]
+      summary: Get anomaly z-score timeline
+      description: Returns z-score data points over the last 60 seconds
+      responses:
+        "200":
+          description: Anomaly timeline data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnomalyDataPoint"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +147,250 @@ components:
       required:
         - status
 
+    PacketRecord:
+      type: object
+      properties:
+        id:
+          type: string
+        timestamp:
+          type: string
+          description: ISO 8601 timestamp
+        src_ip:
+          type: string
+        dst_ip:
+          type: string
+        src_port:
+          type: integer
+        dst_port:
+          type: integer
+        protocol:
+          type: string
+          enum: [TCP, UDP, ICMP, OTHER]
+        length:
+          type: integer
+          description: Packet size in bytes
+        flags:
+          type: string
+          description: TCP flags string (SYN, ACK, SYN-ACK, etc.)
+        ttl:
+          type: integer
+        is_anomaly:
+          type: boolean
+        z_score:
+          type: number
+        severity:
+          type: string
+          enum: [NORMAL, LOW, MED, HIGH, CRITICAL]
+        country:
+          type: string
+        is_external:
+          type: boolean
+      required:
+        - id
+        - timestamp
+        - src_ip
+        - dst_ip
+        - src_port
+        - dst_port
+        - protocol
+        - length
+        - flags
+        - ttl
+        - is_anomaly
+        - z_score
+        - severity
+        - country
+        - is_external
+
+    AnomalyResult:
+      type: object
+      properties:
+        id:
+          type: string
+        timestamp:
+          type: string
+        src_ip:
+          type: string
+        dst_ip:
+          type: string
+        dst_port:
+          type: integer
+        protocol:
+          type: string
+        is_anomaly:
+          type: boolean
+        z_score:
+          type: number
+        reason:
+          type: string
+        severity:
+          type: string
+          enum: [LOW, MED, HIGH, CRITICAL]
+        packet_length:
+          type: integer
+      required:
+        - id
+        - timestamp
+        - src_ip
+        - dst_ip
+        - dst_port
+        - protocol
+        - is_anomaly
+        - z_score
+        - reason
+        - severity
+        - packet_length
+
+    ThreatLevel:
+      type: object
+      properties:
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        label:
+          type: string
+          enum: [NORMAL, ELEVATED, HIGH, CRITICAL]
+        top_threats:
+          type: array
+          items:
+            type: string
+        anomaly_ratio:
+          type: number
+        active_compliance_flags:
+          type: integer
+        packets_analyzed:
+          type: integer
+      required:
+        - score
+        - label
+        - top_threats
+        - anomaly_ratio
+        - active_compliance_flags
+        - packets_analyzed
+
+    ComplianceRule:
+      type: object
+      properties:
+        id:
+          type: string
+        framework:
+          type: string
+          enum: [PCI-DSS, NIST]
+        description:
+          type: string
+        triggered:
+          type: boolean
+        evidence:
+          type: string
+        severity:
+          type: string
+          enum: [WARN, FAIL, PASS]
+      required:
+        - id
+        - framework
+        - description
+        - triggered
+        - evidence
+        - severity
+
+    ComplianceReport:
+      type: object
+      properties:
+        timestamp:
+          type: string
+        total_packets_analyzed:
+          type: integer
+        rules_triggered:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComplianceRule"
+        all_rules:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComplianceRule"
+        risk_rating:
+          type: string
+          enum: [PASS, WARN, FAIL]
+        anomaly_rate_percent:
+          type: number
+      required:
+        - timestamp
+        - total_packets_analyzed
+        - rules_triggered
+        - all_rules
+        - risk_rating
+        - anomaly_rate_percent
+
+    GeoThreat:
+      type: object
+      properties:
+        ip:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        country:
+          type: string
+        city:
+          type: string
+        asn:
+          type: string
+        org:
+          type: string
+        port_score:
+          type: integer
+        threat_count:
+          type: integer
+        severity:
+          type: string
+          enum: [LOW, MED, HIGH, CRITICAL]
+      required:
+        - ip
+        - latitude
+        - longitude
+        - country
+        - city
+        - asn
+        - org
+        - port_score
+        - threat_count
+        - severity
+
+    ProtocolBreakdown:
+      type: object
+      properties:
+        TCP:
+          type: integer
+        UDP:
+          type: integer
+        ICMP:
+          type: integer
+        OTHER:
+          type: integer
+        total:
+          type: integer
+      required:
+        - TCP
+        - UDP
+        - ICMP
+        - OTHER
+        - total
+
+    AnomalyDataPoint:
+      type: object
+      properties:
+        time:
+          type: string
+        z_score:
+          type: number
+        is_anomaly:
+          type: boolean
+        packet_rate:
+          type: number
+      required:
+        - time
+        - z_score
+        - is_anomaly
+        - packet_rate

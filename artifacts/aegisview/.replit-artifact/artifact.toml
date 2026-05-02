@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "AegisView"
+version = "1.0.0"
+id = "artifacts/aegisview"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22466
+
+[services.development]
+run = "pnpm --filter @workspace/aegisview run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/aegisview", "run", "build" ]
+publicDir = "artifacts/aegisview/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22466"
+BASE_PATH = "/"

@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
-  status: string;
+export interface AnomalyDataPoint {
+  time: string;
+  z_score: number;
+  is_anomaly: boolean;
+  packet_rate: number;
 }

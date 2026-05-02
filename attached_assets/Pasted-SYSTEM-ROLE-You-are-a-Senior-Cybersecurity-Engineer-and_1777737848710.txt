@@ -1,0 +1,293 @@
+SYSTEM ROLE: You are a Senior Cybersecurity Engineer and Full-Stack Architect
+with 15 years of SOC tooling experience. You are building AegisView — a
+real-time network anomaly detection and compliance auditing dashboard for
+FinTech and Government SOC teams. This is a hackathon build. Every decision
+must be modular, deployable on Replit, and production-credible. No placeholders.
+No "TODO" comments. Working code only.
+
+═══════════════════════════════════════════════════════════
+MISSION BRIEF
+═══════════════════════════════════════════════════════════
+
+Build AegisView: a live packet-capture dashboard that performs statistical
+anomaly detection, geographic IP threat mapping, protocol analysis, and
+automated compliance flagging (PCI-DSS / NIST 800-53 aligned).
+
+Target buyers: FinTech compliance officers, Government SOC analysts.
+Core value prop: "Wireshark + Splunk, in a browser, with AI-grade anomaly
+scoring — deployable in 60 seconds."
+
+═══════════════════════════════════════════════════════════
+EXACT FILE STRUCTURE — GENERATE ALL OF THESE FILES
+═══════════════════════════════════════════════════════════
+
+aegisview/
+├── backend/
+│   ├── main.py                  # FastAPI app entrypoint + CORS + router mount
+│   ├── capture/
+│   │   ├── __init__.py
+│   │   ├── sniffer.py           # Scapy AsyncSniffer, background thread
+│   │   └── parser.py            # Binary packet → structured dict (IP/TCP/UDP/ICMP)
+│   ├── analysis/
+│   │   ├── __init__.py
+│   │   ├── anomaly.py           # Z-score + IQR statistical model (no ML libs needed)
+│   │   ├── port_scanner.py      # Nmap-python wrapper, scan intensity scoring
+│   │   └── compliance.py        # PCI-DSS / NIST flag engine (rule-based)
+│   ├── geo/
+│   │   ├── __init__.py
+│   │   └── resolver.py          # ip2location or geoip2 → lat/lon/country/ASN
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── routes_packets.py    # GET /packets, GET /packets/stream (SSE)
+│   │   ├── routes_threats.py    # GET /threats, GET /threat-level
+│   │   └── routes_compliance.py # GET /compliance/report
+│   ├── models/
+│   │   └── schemas.py           # Pydantic v2 models for all API responses
+│   └── requirements.txt
+│
+├── frontend/
+│   ├── src/
+│   │   ├── main.jsx
+│   │   ├── App.jsx              # Layout shell, SSE connection manager
+│   │   ├── components/
+│   │   │   ├── ThreatLevelGauge.jsx   # Radial SVG gauge, 0–100 threat score
+│   │   │   ├── GlobeMap.jsx           # react-globe.gl 3D globe, arcs per threat IP
+│   │   │   ├── ProtocolBreakdown.jsx  # Recharts donut — TCP/UDP/ICMP/OTHER
+│   │   │   ├── PacketFeed.jsx         # Virtualized live table (react-window)
+│   │   │   ├── AnomalyChart.jsx       # Recharts line chart, z-score over time
+│   │   │   └── CompliancePanel.jsx    # Flagged rules accordion (PCI / NIST)
+│   │   ├── hooks/
+│   │   │   ├── useSSE.js        # SSE subscription hook with reconnect logic
+│   │   │   └── useThreatLevel.js # Polls /threat-level every 5s, returns score+label
+│   │   ├── store/
+│   │   │   └── packetStore.js   # Zustand store — packets[], threats[], compliance[]
+│   │   └── utils/
+│   │       └── colorScale.js    # Threat score → hex color (green→yellow→red)
+│   ├── index.html
+│   ├── vite.config.js
+│   └── package.json
+│
+├── .replit
+├── replit.nix
+└── README.md
+
+═══════════════════════════════════════════════════════════
+BACKEND SPEC — IMPLEMENT EXACTLY AS DESCRIBED
+═══════════════════════════════════════════════════════════
+
+── sniffer.py ──────────────────────────────────────────
+Use Scapy's AsyncSniffer on interface "lo" (fallback: "eth0").
+Capture filter: "ip". Store last 500 packets in a thread-safe
+collections.deque(maxlen=500). Expose a get_packets() function
+that returns the deque as a list.
+
+── parser.py ────────────────────────────────────────────
+For each Scapy packet, extract:
+  - timestamp (ISO 8601)
+  - src_ip, dst_ip, src_port, dst_port
+  - protocol ("TCP" | "UDP" | "ICMP" | "OTHER")
+  - length (bytes)
+  - flags (TCP flags as string, e.g. "SYN", "ACK", "SYN-ACK")
+  - ttl
+Return as a dict matching the PacketRecord Pydantic schema.
+
+── anomaly.py ───────────────────────────────────────────
+Sliding window of last 60 seconds of packet lengths.
+Compute: mean, std_dev, z_score for each new packet.
+Flag as anomaly if abs(z_score) > 2.5 OR if packet rate
+(packets/sec) exceeds 3× the rolling 60s average.
+Also flag: identical src→dst pairs appearing >20x in 10s
+(connection flood indicator).
+Return: AnomalyResult(is_anomaly: bool, z_score: float,
+reason: str, severity: "LOW"|"MED"|"HIGH"|"CRITICAL")
+
+── port_scanner.py ──────────────────────────────────────
+Use python-nmap (nmap.PortScanner). On a detected new external IP,
+run a non-intrusive scan: nm.scan(ip, arguments="-sV -T2 --top-ports 100").
+Parse open ports. Compute port_scan_score:
+  score = (open_ports_count * 3) + (sensitive_ports_hit * 10)
+  sensitive_ports = [22, 23, 3389, 445, 1433, 3306, 6379, 27017]
+Return: PortScanResult(ip, open_ports[], sensitive_ports[], score)
+
+── compliance.py ─────────────────────────────────────────
+Rule engine. Each rule is a dict: {id, framework, description,
+triggered: bool, evidence: str}
+
+Implement these rules:
+  PCI-DSS-1.2: Flag unencrypted traffic on port 80 to/from
+               RFC1918 addresses → "Clear-text data in CDE"
+  PCI-DSS-6.5: Flag any packet with dst_port=23 (Telnet) →
+               "Insecure protocol in use"
+  NIST-SI-3:   Flag if anomaly rate >5% of total traffic →
+               "Malicious code event threshold exceeded"
+  NIST-AC-17:  Flag dst_port=3389 (RDP) from non-RFC1918 src →
+               "Remote access from untrusted network"
+
+── resolver.py ───────────────────────────────────────────
+Use geoip2 (MaxMind GeoLite2-City.mmdb — include download
+instruction in README). For each unique external IP:
+  - Return: GeoResult(ip, latitude, longitude, country,
+    city, asn, org)
+Cache results in a dict. Skip RFC1918 addresses.
+
+── routes_packets.py ─────────────────────────────────────
+GET  /api/packets          → last 100 parsed packets (JSON)
+GET  /api/packets/stream   → SSE endpoint, push new packets
+                             every 500ms using asyncio + yield
+
+── routes_threats.py ─────────────────────────────────────
+GET  /api/threats          → list of AnomalyResults
+GET  /api/threat-level     → ThreatLevel(score: int 0-100,
+     label: "NORMAL"|"ELEVATED"|"HIGH"|"CRITICAL",
+     top_threats: str[])
+     Score formula: (anomaly_ratio*40) + (max_port_score/10) +
+     (active_compliance_flags*15), clamped to 100.
+
+── routes_compliance.py ──────────────────────────────────
+GET  /api/compliance/report → full ComplianceReport(
+     timestamp, total_packets_analyzed, rules_triggered[],
+     risk_rating: "PASS"|"WARN"|"FAIL")
+
+── schemas.py ────────────────────────────────────────────
+Define Pydantic v2 BaseModel classes for:
+PacketRecord, AnomalyResult, PortScanResult, GeoResult,
+ThreatLevel, ComplianceRule, ComplianceReport
+
+── requirements.txt ──────────────────────────────────────
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+scapy>=2.5.0
+python-nmap>=0.7.1
+geoip2>=4.8.0
+pydantic>=2.0.0
+sse-starlette>=2.0.0
+python-multipart
+
+═══════════════════════════════════════════════════════════
+FRONTEND SPEC — IMPLEMENT EXACTLY AS DESCRIBED
+═══════════════════════════════════════════════════════════
+
+── App.jsx ──────────────────────────────────────────────
+Dark theme (#0a0e1a background). 12-column CSS Grid layout.
+Header bar: "🛡️ AegisView" left-aligned, connection status
+pill (green "LIVE" / red "DISCONNECTED") right-aligned.
+Grid:
+  Row 1: ThreatLevelGauge (col 1–3) | GlobeMap (col 4–12)
+  Row 2: ProtocolBreakdown (col 1–4) | AnomalyChart (col 5–12)
+  Row 3: PacketFeed (col 1–8) | CompliancePanel (col 9–12)
+
+── ThreatLevelGauge.jsx ─────────────────────────────────
+SVG radial gauge. Arc spans 180°. Color fills based on score:
+0-30: #00ff88 (NORMAL), 31-60: #ffd700 (ELEVATED),
+61-85: #ff6b35 (HIGH), 86-100: #ff0033 (CRITICAL).
+Animate arc fill with CSS transition. Show score number
+large in center, label below it.
+
+── GlobeMap.jsx ─────────────────────────────────────────
+Use react-globe.gl library. Dark globe texture. For each
+threat IP with geo data, render:
+  - A glowing red point at that lat/lon
+  - An animated arc from that point to the user's detected
+    location (use /api/geo/my-ip or hardcode to center)
+  - Tooltip on hover: IP, Country, ASN, Port Score
+Config: autoRotate=true, atmosphereColor="#1a4fff",
+hexPolygonsData for country borders.
+
+── ProtocolBreakdown.jsx ────────────────────────────────
+Recharts PieChart (donut variant). 4 slices: TCP, UDP,
+ICMP, OTHER. Colors: #00d4ff, #7b2fff, #ff6b35, #888.
+Animate on data change. Show count + % in legend.
+
+── AnomalyChart.jsx ─────────────────────────────────────
+Recharts LineChart. X-axis: time (last 60 seconds).
+Y-axis: z-score. Reference line at y=2.5 and y=-2.5
+(red dashed — "anomaly threshold"). Dots colored red
+if anomaly=true. Updates every 500ms via SSE store.
+
+── PacketFeed.jsx ────────────────────────────────────────
+react-window FixedSizeList. Render last 100 packets.
+Columns: Time | Src IP:Port | Dst IP:Port | Protocol |
+Size | Flags | Anomaly.
+Anomaly column: red "⚠ ANOM" badge or green "✓ OK".
+Row highlight: red background if CRITICAL anomaly.
+Monospace font. Zebra striping.
+
+── CompliancePanel.jsx ──────────────────────────────────
+Accordion list. Each triggered compliance rule renders as:
+  [!] PCI-DSS-1.2 ▼
+      "Clear-text data in CDE"
+      Evidence: "14 packets on port 80 from 192.168.x.x"
+Color: orange if WARN, red if triggered. Green "✓ All Clear"
+if no flags. Include a "Download Report (JSON)" button
+that fetches /api/compliance/report and triggers download.
+
+── useSSE.js ─────────────────────────────────────────────
+const useSSE = (url) => {
+  // Create EventSource, auto-reconnect on error after 3s
+  // Parse JSON data, push to callback
+  // Cleanup on unmount
+}
+
+── packetStore.js ────────────────────────────────────────
+Zustand store. State: { packets: [], threats: [],
+complianceFlags: [], threatLevel: {} }
+Actions: addPacket (cap at 500), setThreats, setThreatLevel,
+setCompliance.
+
+── package.json dependencies ─────────────────────────────
+react, react-dom, react-globe.gl, recharts, react-window,
+zustand, vite, @vitejs/plugin-react
+
+═══════════════════════════════════════════════════════════
+REPLIT DEPLOYMENT CONFIG
+═══════════════════════════════════════════════════════════
+
+.replit:
+  run = "bash start.sh"
+  [nix] channel = "stable-23_11"
+
+start.sh: (generate this file too)
+  cd backend && pip install -r requirements.txt -q &
+  cd frontend && npm install && npm run build &
+  wait
+  cd frontend && npm run preview -- --port 3000 &
+  cd backend && uvicorn main:app --host 0.0.0.0 --port 8000
+
+vite.config.js:
+  proxy: { '/api': 'http://localhost:8000' }
+
+═══════════════════════════════════════════════════════════
+QUALITY GATES — ENFORCE THESE OR REWRITE
+═══════════════════════════════════════════════════════════
+
+1. Zero "pass" statements or empty function bodies.
+2. Every API route must return data within 200ms (use
+   background threads for Scapy, not blocking calls).
+3. All Pydantic models must have field validators.
+4. SSE endpoint must handle client disconnect gracefully.
+5. GlobeMap must render within 2s — lazy load heavy assets.
+6. No hardcoded secrets. Use os.environ for any config.
+7. CORS must allow localhost:3000 and *.replit.dev origins.
+8. The compliance report JSON must be valid against a schema
+   you define in schemas.py — validate before returning.
+
+═══════════════════════════════════════════════════════════
+HACKATHON EDGE — WHAT MAKES THIS WIN
+═══════════════════════════════════════════════════════════
+
+Judges will see in 30 seconds:
+  ✦ A 3D rotating globe with threat arcs — impossible-looking
+  ✦ A live threat gauge pulsing red — visceral, immediate
+  ✦ "PCI-DSS VIOLATION DETECTED" in the compliance panel —
+    industry credibility in one line
+  ✦ Z-score chart proving this is ML-adjacent, not a toy
+
+Frame the README as: "AegisView replaces a $200K/year Splunk
+deployment for SMB FinTech companies. Built in 24 hours."
+
+═══════════════════════════════════════════════════════════
+EXECUTE. Generate every file. Start with backend/main.py,
+then schemas.py, then each module in dependency order,
+then frontend. After each file, confirm: "✓ [filename] complete."
+Do not stop until all 20+ files are generated.
+═══════════════════════════════════════════════════════════
