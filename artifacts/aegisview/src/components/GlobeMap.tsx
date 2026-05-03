@@ -15,8 +15,13 @@ interface GeoThreat {
 }
 
 function latLonToXY(lat: number, lon: number, w: number, h: number): [number, number] {
-  const x = ((lon + 180) / 360) * w;
-  const y = ((90 - lat) / 180) * h;
+  const radius = Math.min(w, h) * 0.36;
+  const cx = w * 0.5;
+  const cy = h * 0.52;
+  const latRad = (lat * Math.PI) / 180;
+  const lonRad = ((lon + 18) * Math.PI) / 180;
+  const x = cx + Math.cos(latRad) * Math.sin(lonRad) * radius;
+  const y = cy - Math.sin(latRad) * radius * 0.92;
   return [x, y];
 }
 
@@ -73,32 +78,47 @@ export default function GlobeMap() {
 
     const w = canvas.width;
     const h = canvas.height;
+    const cx = w * 0.5;
+    const cy = h * 0.52;
+    const radius = Math.min(w, h) * 0.38;
 
     ctx.fillStyle = "#0a0e1a";
     ctx.fillRect(0, 0, w, h);
 
-    const grad = ctx.createLinearGradient(0, 0, w, h);
-    grad.addColorStop(0, "rgba(0,212,255,0.12)");
-    grad.addColorStop(1, "rgba(123,47,255,0.06)");
+    const grad = ctx.createRadialGradient(cx, cy, radius * 0.1, cx, cy, radius);
+    grad.addColorStop(0, "rgba(0, 212, 255, 0.18)");
+    grad.addColorStop(0.7, "rgba(123, 47, 255, 0.08)");
+    grad.addColorStop(1, "rgba(10, 14, 26, 0.0)");
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(w * 0.5, h * 0.52, Math.min(w, h) * 0.38, 0, Math.PI * 2);
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.strokeStyle = "rgba(0, 212, 255, 0.08)";
     ctx.lineWidth = 0.5;
     for (let lat = -60; lat <= 60; lat += 30) {
-      const [, y] = latLonToXY(lat, 0, w, h);
       ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
+      for (let lon = -180; lon <= 180; lon += 6) {
+        const [x, y] = latLonToXY(lat, lon, w, h);
+        if (lon === -180) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+    for (let lon = -150; lon <= 150; lon += 30) {
+      ctx.beginPath();
+      for (let lat = -75; lat <= 75; lat += 6) {
+        const [x, y] = latLonToXY(lat, lon, w, h);
+        if (lat === -75) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
       ctx.stroke();
     }
 
     ctx.strokeStyle = "rgba(0, 212, 255, 0.16)";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.ellipse(w * 0.5, h * 0.52, w * 0.38, h * 0.36, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, cy, radius, radius * 0.92, 0, 0, Math.PI * 2);
     ctx.stroke();
 
     if (worldUrl) {
@@ -110,23 +130,23 @@ export default function GlobeMap() {
     }
 
     const canvasThreats = geoThreats || [];
-    const [cx, cy] = latLonToXY(40.7, -74, w, h);
+    const [hqx, hqy] = latLonToXY(40.7, -74, w, h);
     ctx.beginPath();
-    ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+    ctx.arc(hqx, hqy, 10, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(0,212,255,0.08)";
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+    ctx.arc(hqx, hqy, 5, 0, Math.PI * 2);
     ctx.fillStyle = "#00d4ff";
     ctx.fill();
 
     for (const threat of canvasThreats) {
       const [tx, ty] = latLonToXY(threat.latitude, threat.longitude, w, h);
       const arcColor = threat.severity === "CRITICAL" ? "rgba(255,0,51,0.5)" : threat.severity === "HIGH" ? "rgba(255,107,53,0.5)" : threat.severity === "MED" ? "rgba(255,215,0,0.4)" : "rgba(0,212,255,0.3)";
-      const cp1x = (tx + cx) / 2;
-      const cp1y = Math.min(ty, cy) - 55;
-      const endX = tx + (cx - tx) * arcProgress;
-      const endY = ty + (cy - ty) * arcProgress;
+      const cp1x = (tx + hqx) / 2;
+      const cp1y = Math.min(ty, hqy) - Math.max(30, radius * 0.2);
+      const endX = tx + (hqx - tx) * arcProgress;
+      const endY = ty + (hqy - ty) * arcProgress;
       const midX = cp1x + (tx - cp1x) * (1 - arcProgress);
       const midY = cp1y + (ty - cp1y) * (1 - arcProgress);
       ctx.beginPath();
@@ -152,7 +172,7 @@ export default function GlobeMap() {
 
     ctx.fillStyle = "#00d4ff";
     ctx.font = "bold 9px monospace";
-    ctx.fillText("SOC HQ", cx + 7, cy - 5);
+    ctx.fillText("SOC HQ", hqx + 7, hqy - 5);
   }, [geoThreats, arcProgress, worldUrl]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
