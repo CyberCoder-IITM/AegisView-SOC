@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
+import Globe from "react-globe.gl";
 import { useGetGeoThreats, getGetGeoThreatsQueryKey } from "@workspace/api-client-react";
-import worldMapImage from "@assets/image_1777783490190.png";
 
 interface GeoThreat {
   ip: string;
@@ -15,16 +15,6 @@ interface GeoThreat {
   severity: string;
 }
 
-function latLonToXY(lat: number, lon: number, w: number, h: number): [number, number] {
-  const paddingX = w * 0.025;
-  const paddingY = h * 0.045;
-  const mapW = w - paddingX * 2;
-  const mapH = h - paddingY * 2;
-  const x = paddingX + ((lon + 180) / 360) * mapW;
-  const y = paddingY + ((90 - lat) / 180) * mapH;
-  return [x, y];
-}
-
 function severityColor(severity: string): string {
   if (severity === "CRITICAL") return "#ff0033";
   if (severity === "HIGH") return "#ff6b35";
@@ -33,147 +23,82 @@ function severityColor(severity: string): string {
 }
 
 export default function GlobeMap() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animFrameRef = useRef<number>(0);
-  const imageRef = useRef<HTMLImageElement | null>(null);
+  const globeRef = useRef<any>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; threat: GeoThreat } | null>(null);
+  const [ready, setReady] = useState(false);
   const [arcProgress, setArcProgress] = useState(0);
-  const [mapReady, setMapReady] = useState(false);
 
   const { data: geoThreats } = useGetGeoThreats({
     query: { queryKey: getGetGeoThreatsQueryKey(), refetchInterval: 5000 },
   });
 
   useEffect(() => {
-    const image = new Image();
-    image.onload = () => {
-      imageRef.current = image;
-      setMapReady(true);
-    };
-    image.src = worldMapImage;
-    setMapReady(true);
+    const globe = globeRef.current;
+    if (!globe) return;
+    globe.controls().autoRotate = true;
+    globe.controls().autoRotateSpeed = 0.25;
+    globe.pointOfView({ lat: 15, lng: -20, altitude: 2.15 }, 1200);
   }, []);
 
   useEffect(() => {
     let start: number | null = null;
-    const duration = 3000;
-    const animate = (ts: number) => {
+    const duration = 1800;
+    const step = (ts: number) => {
       if (!start) start = ts;
-      const progress = Math.min((ts - start) / duration, 1);
-      setArcProgress(progress);
-      if (progress < 1) animFrameRef.current = requestAnimationFrame(animate);
+      setArcProgress(Math.min((ts - start) / duration, 1));
+      if ((ts - start) / duration < 1) requestAnimationFrame(step);
     };
-    animFrameRef.current = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(animFrameRef.current);
+    const frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
   }, [geoThreats]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const w = canvas.width;
-    const h = canvas.height;
-    const [hqx, hqy] = latLonToXY(40.7, -74, w, h);
-
-    ctx.fillStyle = "#0a0e1a";
-    ctx.fillRect(0, 0, w, h);
-
-    const image = imageRef.current;
-    if (image) {
-      ctx.drawImage(image, 0, 0, w, h);
-    }
-
-    ctx.strokeStyle = "rgba(0, 212, 255, 0.12)";
-    ctx.lineWidth = 0.6;
-    for (let lat = -60; lat <= 60; lat += 30) {
-      const [, y] = latLonToXY(lat, 0, w, h);
-      ctx.beginPath();
-      ctx.moveTo(w * 0.025, y);
-      ctx.lineTo(w - w * 0.025, y);
-      ctx.stroke();
-    }
-
-    const canvasThreats = geoThreats || [];
-    ctx.beginPath();
-    ctx.arc(hqx, hqy, 10, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(0,212,255,0.08)";
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(hqx, hqy, 5, 0, Math.PI * 2);
-    ctx.fillStyle = "#00d4ff";
-    ctx.fill();
-
-    for (const threat of canvasThreats) {
-      const [tx, ty] = latLonToXY(threat.latitude, threat.longitude, w, h);
-      const arcColor = threat.severity === "CRITICAL" ? "rgba(255,0,51,0.5)" : threat.severity === "HIGH" ? "rgba(255,107,53,0.5)" : threat.severity === "MED" ? "rgba(255,215,0,0.4)" : "rgba(0,212,255,0.3)";
-      const cp1x = (tx + hqx) / 2;
-      const cp1y = Math.min(ty, hqy) - 55;
-      const endX = tx + (hqx - tx) * arcProgress;
-      const endY = ty + (hqy - ty) * arcProgress;
-      const midX = cp1x + (tx - cp1x) * (1 - arcProgress);
-      const midY = cp1y + (ty - cp1y) * (1 - arcProgress);
-      ctx.beginPath();
-      ctx.moveTo(tx, ty);
-      ctx.quadraticCurveTo(midX, midY, endX, endY);
-      ctx.strokeStyle = arcColor;
-      ctx.lineWidth = threat.severity === "CRITICAL" ? 1.5 : 0.9;
-      ctx.stroke();
-      const markerRadius = Math.min(2 + threat.threat_count / 4, 9);
-      const glowColor = threat.severity === "CRITICAL" ? "rgba(255,0,51," : threat.severity === "HIGH" ? "rgba(255,107,53," : "rgba(255,215,0,";
-      const gradient = ctx.createRadialGradient(tx, ty, 0, tx, ty, markerRadius * 3);
-      gradient.addColorStop(0, glowColor + "0.5)");
-      gradient.addColorStop(1, glowColor + "0)");
-      ctx.beginPath();
-      ctx.arc(tx, ty, markerRadius * 3, 0, Math.PI * 2);
-      ctx.fillStyle = gradient;
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(tx, ty, markerRadius, 0, Math.PI * 2);
-      ctx.fillStyle = severityColor(threat.severity);
-      ctx.fill();
-    }
-
-    ctx.fillStyle = "#00d4ff";
-    ctx.font = "bold 9px monospace";
-    ctx.fillText("SOC HQ", hqx + 7, hqy - 5);
-  }, [geoThreats, arcProgress]);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const my = (e.clientY - rect.top) * (canvas.height / rect.height);
-    const threats = geoThreats || [];
-    for (const threat of threats) {
-      const [tx, ty] = latLonToXY(threat.latitude, threat.longitude, canvas.width, canvas.height);
-      if (Math.sqrt((mx - tx) ** 2 + (my - ty) ** 2) < 15) {
-        setTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top, threat });
-        return;
-      }
-    }
-    setTooltip(null);
-  };
 
   return (
     <div className="relative w-full h-full bg-[#0a0e1a] overflow-hidden">
-      <canvas
-        ref={canvasRef}
-        width={1200}
-        height={400}
-        className="w-full h-full"
-        onMouseMove={handleMouseMove}
-        onMouseLeave={() => setTooltip(null)}
-        style={{ display: "block" }}
+      <Globe
+        ref={globeRef}
+        backgroundColor="#0a0e1a"
+        globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
+        backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
+        showAtmosphere
+        atmosphereColor="#00d4ff"
+        atmosphereAltitude={0.18}
+        pointsData={geoThreats || []}
+        pointLat="latitude"
+        pointLng="longitude"
+        pointColor={(d: any) => severityColor(d.severity)}
+        pointAltitude={(d: any) => Math.min(0.08 + d.threat_count * 0.01, 0.3)}
+        pointRadius={(d: any) => Math.min(0.16 + d.threat_count * 0.02, 0.45)}
+        pointsMerge={false}
+        arcsData={(geoThreats || []).map(threat => ({
+          startLat: 40.7,
+          startLng: -74,
+          endLat: threat.latitude,
+          endLng: threat.longitude,
+          color: severityColor(threat.severity),
+        }))}
+        arcColor="color"
+        arcAltitude={0.2}
+        arcStroke={0.65}
+        arcDashLength={0.65}
+        arcDashGap={1.1}
+        arcDashAnimateTime={1800}
+        arcsTransitionDuration={0}
+        arcDashInitialGap={() => 1.1 * (1 - arcProgress)}
+        onPointClick={(point: any, event: MouseEvent) => {
+          const threat = point as GeoThreat;
+          const target = event.target as HTMLElement;
+          const rect = target?.getBoundingClientRect?.();
+          if (!rect) return;
+          setTooltip({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, threat });
+        }}
+        onGlobeReady={() => setReady(true)}
       />
       <div className="absolute top-2 left-3 text-[10px] text-primary/60 font-mono uppercase tracking-widest pointer-events-none">
         Global Threat Map — {(geoThreats || []).length} Active Sources
       </div>
-      {!mapReady && (
+      {!ready && (
         <div className="absolute inset-0 flex items-center justify-center text-xs font-mono text-muted-foreground bg-[#0a0e1a]">
-          Loading map…
+          Loading globe…
         </div>
       )}
       {tooltip && (
