@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useGetGeoThreats, getGetGeoThreatsQueryKey } from "@workspace/api-client-react";
+import worldMapImage from "@assets/image_1777783490190.png";
 
 interface GeoThreat {
   ip: string;
@@ -15,8 +16,8 @@ interface GeoThreat {
 }
 
 function latLonToXY(lat: number, lon: number, w: number, h: number): [number, number] {
-  const paddingX = w * 0.04;
-  const paddingY = h * 0.08;
+  const paddingX = w * 0.025;
+  const paddingY = h * 0.045;
   const mapW = w - paddingX * 2;
   const mapH = h - paddingY * 2;
   const x = paddingX + ((lon + 180) / 360) * mapW;
@@ -31,14 +32,11 @@ function severityColor(severity: string): string {
   return "#00d4ff";
 }
 
-const GEOJSON_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
-
 export default function GlobeMap() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; threat: GeoThreat } | null>(null);
   const [arcProgress, setArcProgress] = useState(0);
-  const [worldUrl, setWorldUrl] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
 
   const { data: geoThreats } = useGetGeoThreats({
@@ -46,19 +44,7 @@ export default function GlobeMap() {
   });
 
   useEffect(() => {
-    let alive = true;
-    void fetch(GEOJSON_URL)
-      .then(r => r.blob())
-      .then(blob => {
-        if (!alive) return;
-        setWorldUrl(URL.createObjectURL(blob));
-        setMapReady(true);
-      })
-      .catch(() => {
-        setWorldUrl(null);
-        setMapReady(true);
-      });
-    return () => { alive = false; };
+    setMapReady(true);
   }, []);
 
   useEffect(() => {
@@ -87,33 +73,20 @@ export default function GlobeMap() {
     ctx.fillStyle = "#0a0e1a";
     ctx.fillRect(0, 0, w, h);
 
-    const grad = ctx.createRadialGradient(w * 0.5, h * 0.52, 0, w * 0.5, h * 0.52, Math.min(w, h) * 0.55);
-    grad.addColorStop(0, "rgba(0,212,255,0.14)");
-    grad.addColorStop(0.8, "rgba(123,47,255,0.05)");
-    grad.addColorStop(1, "rgba(10,14,26,0)");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, w, h);
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, w, h);
+    };
+    img.src = worldMapImage;
 
-    ctx.strokeStyle = "rgba(0, 212, 255, 0.08)";
-    ctx.lineWidth = 0.5;
+    ctx.strokeStyle = "rgba(0, 212, 255, 0.12)";
+    ctx.lineWidth = 0.6;
     for (let lat = -60; lat <= 60; lat += 30) {
       const [, y] = latLonToXY(lat, 0, w, h);
       ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(w, y);
+      ctx.moveTo(w * 0.025, y);
+      ctx.lineTo(w - w * 0.025, y);
       ctx.stroke();
-    }
-
-    ctx.strokeStyle = "rgba(0, 212, 255, 0.16)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(w * 0.04, h * 0.08, w * 0.92, h * 0.84);
-
-    if (worldUrl) {
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0, w, h);
-      };
-      img.src = worldUrl;
     }
 
     const canvasThreats = geoThreats || [];
@@ -159,7 +132,7 @@ export default function GlobeMap() {
     ctx.fillStyle = "#00d4ff";
     ctx.font = "bold 9px monospace";
     ctx.fillText("SOC HQ", hqx + 7, hqy - 5);
-  }, [geoThreats, arcProgress, worldUrl]);
+  }, [geoThreats, arcProgress]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
