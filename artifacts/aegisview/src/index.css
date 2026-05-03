@@ -344,7 +344,7 @@
 @media (max-width: 639px) {
   .header-main-row {
     padding: 0 var(--space-sm) !important;
-    gap: var(--space-sm) !important;
+    gap: var(--space-xs) !important;
   }
   .header-clock { display: none; }
   .header-war-room span { display: none; }
@@ -366,4 +366,46 @@
   }
   .stat-card .stat-value  { font-size: 1.05rem !important; }
   .stat-card .stat-label  { font-size: 0.52rem !important; }
+}
+
+
+:root {
+  color-scheme: dark;
+}
+
+:root[data-color-mode="ember"] {
+  --bg-primary: #120b0a;
+  --bg-secondary: #1a1110;
+  --bg-card: #241513;
+  --bg-card-hover: #2d1b18;
+  --bg-border: #4a2a24;
+  --aegis-cyan: #ffb36b;
+  --aegis-green: #ff8a4c;
+  --aegis-yellow: #ffcf99;
+  --aegis-orange: #ff6f3d;
+  --aegis-red: #ff4d4d;
+  --aegis-purple: #ff8c42;
+  --text-primary: #fff1ea;
+  --text-secondary: #c7a59a;
+  --text-muted: #8f6c61;
+  --card-shadow: 0 4px 24px rgba(255, 111, 61, 0.16);
+}
+
+:root[data-color-mode="light"] {
+  color-scheme: light;
+  --bg-primary: #f5f8fc;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #eff4fb;
+  --bg-border: #d6deea;
+  --aegis-cyan: #007bff;
+  --aegis-green: #0a8f5b;
+  --aegis-yellow: #b7791f;
+  --aegis-orange: #c05621;
+  --aegis-red: #d64545;
+  --aegis-purple: #6b46c1;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  --card-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 }

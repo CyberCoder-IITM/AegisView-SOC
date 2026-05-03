@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Shield } from "lucide-react";
+import { Monitor, MoonStar, Shield, SunMedium } from "lucide-react";
 
 interface HeaderProps {
   simulationActive?: boolean;
@@ -11,8 +11,19 @@ interface HeaderProps {
   extraActions?: React.ReactNode;
 }
 
+const COLOR_MODES = ["cyber", "ember", "light"] as const;
+type ColorMode = typeof COLOR_MODES[number];
+
+const MODE_LABELS: Record<ColorMode, string> = { cyber: "CYBER", ember: "EMBER", light: "LIGHT" };
+
 export function Header({ simulationActive, simulationMode, baselineMode, onWarRoom, onShowShortcuts, replayTimestamp, extraActions }: HeaderProps) {
   const [time, setTime] = useState(new Date());
+  const [colorMode, setColorMode] = useState<ColorMode>(() => (localStorage.getItem("aegisview_color_mode") as ColorMode) || "cyber");
+
+  useEffect(() => {
+    document.documentElement.dataset.colorMode = colorMode;
+    localStorage.setItem("aegisview_color_mode", colorMode);
+  }, [colorMode]);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -104,6 +115,24 @@ export function Header({ simulationActive, simulationMode, baselineMode, onWarRo
 
         {/* Extra action buttons (QueryEngine, Achievements, IncidentManager, SystemHealth) */}
         {extraActions}
+
+        <button
+          onClick={() => setColorMode(prev => COLOR_MODES[(COLOR_MODES.indexOf(prev) + 1) % COLOR_MODES.length])}
+          style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "4px 10px", borderRadius: 999,
+            border: "1px solid var(--bg-border)",
+            background: "rgba(255,255,255,0.03)",
+            color: "var(--text-secondary)",
+            fontSize: "0.68rem", fontWeight: 700,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+          title="Switch color mode"
+        >
+          {colorMode === "cyber" ? <Monitor size={12} /> : colorMode === "ember" ? <MoonStar size={12} /> : <SunMedium size={12} />}
+          {MODE_LABELS[colorMode]}
+        </button>
 
         {/* Simulation active badge */}
         {simulationActive && simulationMode && (
