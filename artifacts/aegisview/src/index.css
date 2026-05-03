@@ -347,7 +347,7 @@
     gap: var(--space-xs) !important;
   }
   .header-clock { display: none; }
-  .header-war-room span, .header-color-mode span { display: none; }
+  .header-war-room span, .header-color-mode-label { display: none; }
   .header-war-room, .header-color-mode { padding: 4px 8px !important; }
 }
 

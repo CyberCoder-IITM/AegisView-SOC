@@ -133,7 +133,7 @@ export function Header({ simulationActive, simulationMode, baselineMode, onWarRo
           title="Switch color mode"
         >
           {colorMode === "cyber" ? <Monitor size={12} /> : colorMode === "ember" ? <MoonStar size={12} /> : <SunMedium size={12} />}
-          <span>{MODE_LABELS[colorMode]}</span>
+          <span className="header-color-mode-label">{MODE_LABELS[colorMode]}</span>
         </button>
 
         {/* Simulation active badge */}
