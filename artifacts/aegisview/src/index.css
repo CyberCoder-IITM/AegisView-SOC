@@ -347,8 +347,8 @@
     gap: var(--space-xs) !important;
   }
   .header-clock { display: none; }
-  .header-war-room span { display: none; }
-  .header-war-room { padding: 4px 8px !important; }
+  .header-war-room span, .header-color-mode span { display: none; }
+  .header-war-room, .header-color-mode { padding: 4px 8px !important; }
 }
 
 /* ── Responsive Stats Bar ─────────────────────────────────── */

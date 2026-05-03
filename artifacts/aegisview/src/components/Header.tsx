@@ -117,6 +117,7 @@ export function Header({ simulationActive, simulationMode, baselineMode, onWarRo
         {extraActions}
 
         <button
+          className="header-color-mode"
           onClick={() => setColorMode(prev => COLOR_MODES[(COLOR_MODES.indexOf(prev) + 1) % COLOR_MODES.length])}
           style={{
             display: "flex", alignItems: "center", gap: 6,
@@ -127,11 +128,12 @@ export function Header({ simulationActive, simulationMode, baselineMode, onWarRo
             fontSize: "0.68rem", fontWeight: 700,
             cursor: "pointer",
             whiteSpace: "nowrap",
+            flexShrink: 0,
           }}
           title="Switch color mode"
         >
           {colorMode === "cyber" ? <Monitor size={12} /> : colorMode === "ember" ? <MoonStar size={12} /> : <SunMedium size={12} />}
-          {MODE_LABELS[colorMode]}
+          <span>{MODE_LABELS[colorMode]}</span>
         </button>
 
         {/* Simulation active badge */}
