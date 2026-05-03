@@ -24,9 +24,11 @@ function severityColor(severity: string): string {
 
 export default function GlobeMap() {
   const globeRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; threat: GeoThreat } | null>(null);
   const [ready, setReady] = useState(false);
   const [arcProgress, setArcProgress] = useState(0);
+  const [dimensions, setDimensions] = useState({ width: 600, height: 300 });
 
   const { data: geoThreats } = useGetGeoThreats({
     query: { queryKey: getGetGeoThreatsQueryKey(), refetchInterval: 5000 },
@@ -37,7 +39,7 @@ export default function GlobeMap() {
     if (!globe) return;
     globe.controls().autoRotate = true;
     globe.controls().autoRotateSpeed = 0.25;
-    globe.pointOfView({ lat: 15, lng: -20, altitude: 2.15 }, 1200);
+    globe.pointOfView({ lat: 20, lng: 0, altitude: 2.0 }, 1200);
   }, []);
 
   useEffect(() => {
@@ -52,16 +54,46 @@ export default function GlobeMap() {
     return () => cancelAnimationFrame(frame);
   }, [geoThreats]);
 
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver(entries => {
+      const { width, height } = entries[0].contentRect;
+      setDimensions({ width, height });
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!geoThreats?.length) return;
+    globeRef.current?.pointOfView({ lat: 20, lng: 10, altitude: 1.8 }, 1000);
+  }, [geoThreats]);
+
   return (
-    <div className="relative w-full h-full bg-[#0a0e1a] overflow-hidden">
+    <div
+      ref={containerRef}
+      style={{
+        width: "100%",
+        height: "100%",
+        position: "relative",
+        overflow: "hidden",
+        minHeight: "280px",
+      }}
+    >
       <Globe
         ref={globeRef}
+        width={dimensions.width}
+        height={dimensions.height}
         backgroundColor="#0a0e1a"
         globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
         backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
-        showAtmosphere
-        atmosphereColor="#00d4ff"
-        atmosphereAltitude={0.18}
+        onGlobeReady={() => {
+          setReady(true);
+          globeRef.current?.pointOfView({ lat: 20, lng: 0, altitude: 2.0 }, 0);
+        }}
+        atmosphereColor="#1a4fff"
+        atmosphereAltitude={0.15}
+        showGraticules={false}
         pointsData={geoThreats || []}
         pointLat="latitude"
         pointLng="longitude"
@@ -91,7 +123,6 @@ export default function GlobeMap() {
           if (!rect) return;
           setTooltip({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, threat });
         }}
-        onGlobeReady={() => setReady(true)}
       />
       <div className="absolute top-2 left-3 text-[10px] text-primary/60 font-mono uppercase tracking-widest pointer-events-none">
         Global Threat Map — {(geoThreats || []).length} Active Sources
