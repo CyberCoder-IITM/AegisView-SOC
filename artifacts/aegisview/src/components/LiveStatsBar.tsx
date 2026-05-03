@@ -77,7 +77,7 @@ function StatCard({ label, subtitle, color, displayValue, pulse, onClick }: Stat
   return (
     <div
       onClick={onClick}
-      className={`flex flex-col items-center justify-center px-5 py-1.5 rounded-md ${onClick ? "cursor-pointer" : ""}`}
+      className={`stat-card flex flex-col items-center justify-center px-5 py-1.5 rounded-md ${onClick ? "cursor-pointer" : ""}`}
       style={{
         background: "#0d1117",
         border: `1px solid ${color}4d`,
@@ -86,13 +86,13 @@ function StatCard({ label, subtitle, color, displayValue, pulse, onClick }: Stat
       }}
     >
       <span
-        className="font-mono font-bold leading-none"
+        className="stat-value font-mono font-bold leading-none"
         style={{ fontSize: "1.35rem", color, letterSpacing: "-0.03em" }}
       >
         {displayValue}
       </span>
       <span
-        className="font-mono uppercase mt-0.5"
+        className="stat-label font-mono uppercase mt-0.5"
         style={{ fontSize: "0.62rem", color: "#666", letterSpacing: "0.08em" }}
       >
         {subtitle}
@@ -135,7 +135,7 @@ export function LiveStatsBar() {
         }
       `}</style>
       <div
-        className="flex items-center justify-center gap-3 px-6 border-b border-border shrink-0"
+        className="stats-bar flex items-center justify-center gap-3 px-6 border-b border-border shrink-0"
         style={{ background: "#080b14", height: 52 }}
       >
         <StatCard

@@ -48,13 +48,6 @@ const CARD: React.CSSProperties = {
   height: "100%",
 };
 
-const ROW_GRID = (cols: string, h: string | number): React.CSSProperties => ({
-  gridColumn: "1 / -1",
-  display: "grid",
-  gridTemplateColumns: cols,
-  gap: "var(--space-md)",
-  height: typeof h === "number" ? `${h}px` : h,
-});
 
 type MapTab = "globe" | "topology";
 
@@ -213,14 +206,7 @@ export default function Home({ incidentId }: HomeProps) {
 
       {/* Scrollable dashboard grid */}
       <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(12, 1fr)",
-          gap: "var(--space-md)",
-          padding: "var(--space-md)",
-          paddingBottom: "calc(var(--space-md) + 72px)",
-          boxSizing: "border-box",
-        }}>
+        <div className="dash-outer-grid">
 
           {/* Row 0: MITRE Kill Chain — full width */}
           <div style={{ gridColumn: "1 / -1", ...CARD, height: "auto" }}>
@@ -228,7 +214,7 @@ export default function Home({ incidentId }: HomeProps) {
           </div>
 
           {/* Row 1: Threat Gauge + Globe/Topology + SOC Agent */}
-          <div style={ROW_GRID("2fr 5fr 3fr", 320)}>
+          <div className="dash-row dash-row-r1">
             <div style={CARD}>
               <ErrorBoundary label="Threat Gauge"><ThreatLevelGauge /></ErrorBoundary>
             </div>
@@ -288,7 +274,7 @@ export default function Home({ incidentId }: HomeProps) {
           </div>
 
           {/* Row 2: Protocol Breakdown + Z-Score Chart + Device Radar */}
-          <div style={ROW_GRID("2fr 5fr 3fr", 260)}>
+          <div className="dash-row dash-row-r2">
             <div style={CARD}>
               <ErrorBoundary label="Protocol Breakdown"><ProtocolBreakdown /></ErrorBoundary>
             </div>
@@ -301,7 +287,7 @@ export default function Home({ incidentId }: HomeProps) {
           </div>
 
           {/* Row 3: Heatmap + Threat Intel */}
-          <div style={ROW_GRID("7fr 5fr", 220)}>
+          <div className="dash-row dash-row-r3">
             <div style={{ ...CARD, overflowX: "auto", overflowY: "hidden" }}>
               <ErrorBoundary label="Heatmap"><HeatmapPanel /></ErrorBoundary>
             </div>
@@ -311,7 +297,7 @@ export default function Home({ incidentId }: HomeProps) {
           </div>
 
           {/* Row 4: Baseline + Integrity Chain */}
-          <div style={ROW_GRID("1fr 1fr", 160)}>
+          <div className="dash-row dash-row-r4">
             <div style={CARD}>
               <ErrorBoundary label="Baseline"><BaselinePanel /></ErrorBoundary>
             </div>
@@ -321,7 +307,7 @@ export default function Home({ incidentId }: HomeProps) {
           </div>
 
           {/* Row 5: Packet Feed + Compliance + Sigma Rules */}
-          <div style={ROW_GRID("5fr 4fr 3fr", 340)}>
+          <div className="dash-row dash-row-r5">
             <div style={{ ...CARD, display: "flex", flexDirection: "column" }}>
               <ErrorBoundary label="Packet Feed"><PacketFeed /></ErrorBoundary>
             </div>

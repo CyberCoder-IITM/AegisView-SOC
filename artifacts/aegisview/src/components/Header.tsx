@@ -51,15 +51,17 @@ export function Header({ simulationActive, simulationMode, baselineMode, onWarRo
         </div>
       )}
       {/* Main row */}
-      <div style={{
+      <div className="header-main-row" style={{
         height: 56, flexShrink: 0,
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         padding: "0 var(--space-lg)",
+        gap: 8,
+        minWidth: 0,
       }}>
       {/* Left: logo + version */}
-      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "var(--space-sm)", flexShrink: 0 }}>
         <Shield style={{ width: 16, height: 16, color: "var(--aegis-cyan)" }} />
         <h1 style={{ fontWeight: 800, fontSize: "1.1rem", letterSpacing: "0.15em", color: "#fff", margin: 0 }}>
           AEGIS<span style={{ color: "var(--aegis-cyan)" }}>VIEW</span>
@@ -76,7 +78,7 @@ export function Header({ simulationActive, simulationMode, baselineMode, onWarRo
       </div>
 
       {/* Right: status indicators + action items */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, fontFamily: "monospace" }}>
+      <div className="header-right">
         {/* Baseline mode pill */}
         {baselineMode && (
           <div style={{
@@ -120,6 +122,7 @@ export function Header({ simulationActive, simulationMode, baselineMode, onWarRo
 
         {onWarRoom && (
           <button
+            className="header-war-room"
             onClick={onWarRoom}
             style={{
               display: "flex", alignItems: "center", gap: 6,
@@ -130,12 +133,14 @@ export function Header({ simulationActive, simulationMode, baselineMode, onWarRo
               fontSize: "0.7rem", fontWeight: 700,
               cursor: "pointer",
               transition: "background 0.15s",
+              flexShrink: 0,
+              whiteSpace: "nowrap",
             }}
             title="War Room Mode [W]"
             onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,0,51,0.1)")}
             onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
           >
-            ⚔ WAR ROOM
+            ⚔ <span>WAR ROOM</span>
           </button>
         )}
 
@@ -160,7 +165,7 @@ export function Header({ simulationActive, simulationMode, baselineMode, onWarRo
           </button>
         )}
 
-        <div style={{ color: "var(--text-muted)", fontSize: "0.65rem" }}>
+        <div className="header-clock" style={{ color: "var(--text-muted)", fontSize: "0.65rem", whiteSpace: "nowrap" }}>
           {time.toISOString().replace("T", " ").substring(0, 19)} UTC
         </div>
 

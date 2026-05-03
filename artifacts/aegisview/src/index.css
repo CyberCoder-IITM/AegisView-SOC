@@ -237,3 +237,133 @@
 
 .animate-slide-in-right { animation: slideInFromRight 0.35s ease; }
 .animate-fade-in        { animation: fadeIn 0.5s ease forwards; }
+
+/* ── Responsive Dashboard Grid ─────────────────────────── */
+
+.dash-outer-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--space-md);
+  padding: var(--space-md);
+  padding-bottom: calc(var(--space-md) + 80px);
+  box-sizing: border-box;
+}
+
+.dash-row {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--space-md);
+}
+
+/* ── Desktop (≥1024px): original column ratios + fixed heights ── */
+@media (min-width: 1024px) {
+  .dash-row-r1 { grid-template-columns: 2fr 5fr 3fr; height: 320px; }
+  .dash-row-r2 { grid-template-columns: 2fr 5fr 3fr; height: 260px; }
+  .dash-row-r3 { grid-template-columns: 7fr 5fr;     height: 220px; }
+  .dash-row-r4 { grid-template-columns: 1fr 1fr;     height: 160px; }
+  .dash-row-r5 { grid-template-columns: 5fr 4fr 3fr; height: 340px; }
+}
+
+/* ── Tablet (640px – 1023px): 2-column, auto heights ─────── */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .dash-outer-grid { grid-template-columns: 1fr; }
+
+  /* Row 1: gauge + globe | soc agent below */
+  .dash-row-r1 { grid-template-columns: minmax(0,1fr) minmax(0,2fr); height: auto; }
+  .dash-row-r1 > *:first-child  { min-height: 220px; }
+  .dash-row-r1 > *:nth-child(2) { min-height: 280px; }
+  .dash-row-r1 > *:last-child   { grid-column: 1 / -1; min-height: 200px; }
+
+  /* Row 2: protocol + chart | device radar below */
+  .dash-row-r2 { grid-template-columns: minmax(0,1fr) minmax(0,2fr); height: auto; }
+  .dash-row-r2 > *:first-child  { min-height: 220px; }
+  .dash-row-r2 > *:nth-child(2) { min-height: 220px; }
+  .dash-row-r2 > *:last-child   { grid-column: 1 / -1; min-height: 200px; }
+
+  /* Row 3: heatmap + threat intel */
+  .dash-row-r3 { grid-template-columns: minmax(0,3fr) minmax(0,2fr); height: auto; }
+  .dash-row-r3 > * { min-height: 200px; }
+
+  /* Row 4: baseline + chain */
+  .dash-row-r4 { grid-template-columns: minmax(0,1fr) minmax(0,1fr); height: auto; }
+  .dash-row-r4 > * { min-height: 150px; }
+
+  /* Row 5: packet feed (full) | compliance + sigma */
+  .dash-row-r5 { grid-template-columns: minmax(0,1fr) minmax(0,1fr); height: auto; }
+  .dash-row-r5 > *:first-child        { grid-column: 1 / -1; min-height: 280px; }
+  .dash-row-r5 > *:not(:first-child)  { min-height: 220px; }
+}
+
+/* ── Mobile (<640px): single column ──────────────────────── */
+@media (max-width: 639px) {
+  .dash-outer-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-sm);
+    padding: var(--space-sm);
+    padding-bottom: calc(var(--space-sm) + 80px);
+  }
+
+  .dash-row {
+    grid-template-columns: 1fr !important;
+    height: auto !important;
+    gap: var(--space-sm);
+  }
+
+  .dash-row > * {
+    grid-column: 1 / -1 !important;
+    min-height: 200px;
+  }
+
+  /* Per-panel height overrides */
+  .dash-row-r1 > *:first-child  { min-height: 180px; } /* Threat Gauge */
+  .dash-row-r1 > *:nth-child(2) { min-height: 260px; } /* Globe / Topology */
+  .dash-row-r1 > *:last-child   { min-height: 220px; } /* SOC Agent */
+  .dash-row-r2 > *:first-child  { min-height: 180px; } /* Protocol Breakdown */
+  .dash-row-r2 > *:nth-child(2) { min-height: 240px; } /* Anomaly Chart */
+  .dash-row-r2 > *:last-child   { min-height: 200px; } /* Device Radar */
+  .dash-row-r3 > *:first-child  { min-height: 220px; } /* Heatmap */
+  .dash-row-r3 > *:last-child   { min-height: 200px; } /* Threat Intel */
+  .dash-row-r4 > *              { min-height: 140px; }
+  .dash-row-r5 > *:first-child  { min-height: 280px; } /* Packet Feed */
+  .dash-row-r5 > *:not(:first-child) { min-height: 200px; }
+}
+
+/* ── Responsive Header ────────────────────────────────────── */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: monospace;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-shrink: 1;
+}
+.header-right::-webkit-scrollbar { display: none; }
+
+@media (max-width: 639px) {
+  .header-main-row {
+    padding: 0 var(--space-sm) !important;
+    gap: var(--space-sm) !important;
+  }
+  .header-clock { display: none; }
+  .header-war-room span { display: none; }
+  .header-war-room { padding: 4px 8px !important; }
+}
+
+/* ── Responsive Stats Bar ─────────────────────────────────── */
+@media (max-width: 639px) {
+  .stats-bar {
+    height: auto !important;
+    padding: 6px var(--space-sm) !important;
+    gap: var(--space-xs) !important;
+    flex-wrap: nowrap;
+  }
+  .stat-card {
+    padding: 4px 8px !important;
+    min-width: 0 !important;
+    flex: 1 1 0;
+  }
+  .stat-card .stat-value  { font-size: 1.05rem !important; }
+  .stat-card .stat-label  { font-size: 0.52rem !important; }
+}
