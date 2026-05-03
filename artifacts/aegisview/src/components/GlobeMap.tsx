@@ -15,8 +15,12 @@ interface GeoThreat {
 }
 
 function latLonToXY(lat: number, lon: number, w: number, h: number): [number, number] {
-  const x = ((lon + 180) / 360) * w;
-  const y = ((90 - lat) / 180) * h;
+  const paddingX = w * 0.04;
+  const paddingY = h * 0.08;
+  const mapW = w - paddingX * 2;
+  const mapH = h - paddingY * 2;
+  const x = paddingX + ((lon + 180) / 360) * mapW;
+  const y = paddingY + ((90 - lat) / 180) * mapH;
   return [x, y];
 }
 
@@ -35,6 +39,7 @@ export default function GlobeMap() {
   const [tooltip, setTooltip] = useState<{ x: number; y: number; threat: GeoThreat } | null>(null);
   const [arcProgress, setArcProgress] = useState(0);
   const [worldUrl, setWorldUrl] = useState<string | null>(null);
+  const [mapReady, setMapReady] = useState(false);
 
   const { data: geoThreats } = useGetGeoThreats({
     query: { queryKey: getGetGeoThreatsQueryKey(), refetchInterval: 5000 },
@@ -47,8 +52,12 @@ export default function GlobeMap() {
       .then(blob => {
         if (!alive) return;
         setWorldUrl(URL.createObjectURL(blob));
+        setMapReady(true);
       })
-      .catch(() => setWorldUrl(null));
+      .catch(() => {
+        setWorldUrl(null);
+        setMapReady(true);
+      });
     return () => { alive = false; };
   }, []);
 
@@ -73,17 +82,17 @@ export default function GlobeMap() {
 
     const w = canvas.width;
     const h = canvas.height;
+    const [hqx, hqy] = latLonToXY(40.7, -74, w, h);
 
     ctx.fillStyle = "#0a0e1a";
     ctx.fillRect(0, 0, w, h);
 
-    const grad = ctx.createLinearGradient(0, 0, w, h);
-    grad.addColorStop(0, "rgba(0,212,255,0.12)");
-    grad.addColorStop(1, "rgba(123,47,255,0.06)");
+    const grad = ctx.createRadialGradient(w * 0.5, h * 0.52, 0, w * 0.5, h * 0.52, Math.min(w, h) * 0.55);
+    grad.addColorStop(0, "rgba(0,212,255,0.14)");
+    grad.addColorStop(0.8, "rgba(123,47,255,0.05)");
+    grad.addColorStop(1, "rgba(10,14,26,0)");
     ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(w * 0.5, h * 0.52, Math.min(w, h) * 0.38, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillRect(0, 0, w, h);
 
     ctx.strokeStyle = "rgba(0, 212, 255, 0.08)";
     ctx.lineWidth = 0.5;
@@ -97,9 +106,7 @@ export default function GlobeMap() {
 
     ctx.strokeStyle = "rgba(0, 212, 255, 0.16)";
     ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.ellipse(w * 0.5, h * 0.52, w * 0.38, h * 0.36, 0, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.strokeRect(w * 0.04, h * 0.08, w * 0.92, h * 0.84);
 
     if (worldUrl) {
       const img = new Image();
@@ -110,23 +117,22 @@ export default function GlobeMap() {
     }
 
     const canvasThreats = geoThreats || [];
-    const [cx, cy] = latLonToXY(40.7, -74, w, h);
     ctx.beginPath();
-    ctx.arc(cx, cy, 10, 0, Math.PI * 2);
+    ctx.arc(hqx, hqy, 10, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(0,212,255,0.08)";
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+    ctx.arc(hqx, hqy, 5, 0, Math.PI * 2);
     ctx.fillStyle = "#00d4ff";
     ctx.fill();
 
     for (const threat of canvasThreats) {
       const [tx, ty] = latLonToXY(threat.latitude, threat.longitude, w, h);
       const arcColor = threat.severity === "CRITICAL" ? "rgba(255,0,51,0.5)" : threat.severity === "HIGH" ? "rgba(255,107,53,0.5)" : threat.severity === "MED" ? "rgba(255,215,0,0.4)" : "rgba(0,212,255,0.3)";
-      const cp1x = (tx + cx) / 2;
-      const cp1y = Math.min(ty, cy) - 55;
-      const endX = tx + (cx - tx) * arcProgress;
-      const endY = ty + (cy - ty) * arcProgress;
+      const cp1x = (tx + hqx) / 2;
+      const cp1y = Math.min(ty, hqy) - 55;
+      const endX = tx + (hqx - tx) * arcProgress;
+      const endY = ty + (hqy - ty) * arcProgress;
       const midX = cp1x + (tx - cp1x) * (1 - arcProgress);
       const midY = cp1y + (ty - cp1y) * (1 - arcProgress);
       ctx.beginPath();
@@ -135,7 +141,7 @@ export default function GlobeMap() {
       ctx.strokeStyle = arcColor;
       ctx.lineWidth = threat.severity === "CRITICAL" ? 1.5 : 0.9;
       ctx.stroke();
-      const markerRadius = Math.min(2 + threat.threat_count / 5, 8);
+      const markerRadius = Math.min(2 + threat.threat_count / 4, 9);
       const glowColor = threat.severity === "CRITICAL" ? "rgba(255,0,51," : threat.severity === "HIGH" ? "rgba(255,107,53," : "rgba(255,215,0,";
       const gradient = ctx.createRadialGradient(tx, ty, 0, tx, ty, markerRadius * 3);
       gradient.addColorStop(0, glowColor + "0.5)");
@@ -152,7 +158,7 @@ export default function GlobeMap() {
 
     ctx.fillStyle = "#00d4ff";
     ctx.font = "bold 9px monospace";
-    ctx.fillText("SOC HQ", cx + 7, cy - 5);
+    ctx.fillText("SOC HQ", hqx + 7, hqy - 5);
   }, [geoThreats, arcProgress, worldUrl]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -186,6 +192,11 @@ export default function GlobeMap() {
       <div className="absolute top-2 left-3 text-[10px] text-primary/60 font-mono uppercase tracking-widest pointer-events-none">
         Global Threat Map — {(geoThreats || []).length} Active Sources
       </div>
+      {!mapReady && (
+        <div className="absolute inset-0 flex items-center justify-center text-xs font-mono text-muted-foreground bg-[#0a0e1a]">
+          Loading map…
+        </div>
+      )}
       {tooltip && (
         <div
           className="absolute pointer-events-none z-10 bg-card border border-border rounded p-2 text-xs font-mono shadow-lg"
