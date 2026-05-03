@@ -35,6 +35,7 @@ function severityColor(severity: string): string {
 export default function GlobeMap() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animFrameRef = useRef<number>(0);
+  const imageRef = useRef<HTMLImageElement | null>(null);
   const [tooltip, setTooltip] = useState<{ x: number; y: number; threat: GeoThreat } | null>(null);
   const [arcProgress, setArcProgress] = useState(0);
   const [mapReady, setMapReady] = useState(false);
@@ -44,6 +45,12 @@ export default function GlobeMap() {
   });
 
   useEffect(() => {
+    const image = new Image();
+    image.onload = () => {
+      imageRef.current = image;
+      setMapReady(true);
+    };
+    image.src = worldMapImage;
     setMapReady(true);
   }, []);
 
@@ -73,11 +80,10 @@ export default function GlobeMap() {
     ctx.fillStyle = "#0a0e1a";
     ctx.fillRect(0, 0, w, h);
 
-    const img = new Image();
-    img.onload = () => {
-      ctx.drawImage(img, 0, 0, w, h);
-    };
-    img.src = worldMapImage;
+    const image = imageRef.current;
+    if (image) {
+      ctx.drawImage(image, 0, 0, w, h);
+    }
 
     ctx.strokeStyle = "rgba(0, 212, 255, 0.12)";
     ctx.lineWidth = 0.6;
